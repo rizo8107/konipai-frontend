@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   VITE_SITE_LOGO: string;
   VITE_RAZORPAY_KEY_ID: string;
   VITE_GEMINI_API_KEY: string;
+  VITE_API_TIMEOUT: string;
+  VITE_MAX_UPLOAD_SIZE: string;
 }
 
 interface ImportMeta {
@@ -39,8 +41,8 @@ function getEnv(key: string, defaultValue: string = ''): string {
 export const frontendConfig = {
   // API endpoints
   api: {
-    baseUrl: getEnv('VITE_API_URL', 'https://api.konipai.in/api'),
-    emailUrl: getEnv('VITE_EMAIL_API_URL', 'https://api.konipai.in/email-api'),
+    baseUrl: getEnv('VITE_API_URL', 'https://backend-server.7za6uc.easypanel.host/api'),
+    emailUrl: getEnv('VITE_EMAIL_API_URL', 'https://backend-server.7za6uc.easypanel.host/email-api'),
     whatsappUrl: getEnv('VITE_WHATSAPP_API_URL', 'https://backend-whatsappapi.7za6uc.easypanel.host')
   },
   
@@ -51,13 +53,19 @@ export const frontendConfig = {
   
   // Site configuration
   site: {
-    title: getEnv('VITE_SITE_TITLE', 'Konipai'),
+    title: getEnv('VITE_SITE_TITLE', 'Konipai CRM'),
     logo: getEnv('VITE_SITE_LOGO', 'https://konipai.in/assets/logo.png')
   },
   
   // Payment gateway configuration
   payment: {
     razorpayKeyId: getEnv('VITE_RAZORPAY_KEY_ID', 'rzp_live_3rZx2njbNwMEE1')
+  },
+  
+  // API Configuration
+  apiConfig: {
+    timeout: parseInt(getEnv('VITE_API_TIMEOUT', '30000')),
+    maxUploadSize: parseInt(getEnv('VITE_MAX_UPLOAD_SIZE', '5242880'))
   },
   
   // AI configuration
@@ -84,4 +92,5 @@ export function logFrontendConfig(): void {
   console.log('- WhatsApp API URL:', frontendConfig.api.whatsappUrl);
   console.log('- PocketBase URL:', frontendConfig.pocketbase.url);
   console.log('- Environment:', getEnv('MODE', 'development'));
+  console.log('- API Timeout:', frontendConfig.apiConfig.timeout, 'ms');
 } 
