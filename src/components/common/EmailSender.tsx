@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { sendEmailMessage, isValidEmail } from "@/lib/email-direct";
+import { sendEmailMessage, isValidEmail } from "@/lib/email-mailpit";
 
 interface EmailSenderProps {
   defaultSubject?: string;
@@ -52,13 +52,13 @@ export function EmailSender({ defaultSubject = "", defaultMessage = "" }: EmailS
     setIsSending(true);
 
     try {
-      // Send the email directly using EmailEngine
+      // Send the email directly using Mailpit
       const result = await sendEmailMessage(recipient, subject, message);
 
       if (result.success) {
         toast({
           title: "Email sent",
-          description: "Your email has been sent successfully.",
+          description: "Your email has been sent successfully. Check Mailpit UI to view it.",
           variant: "default",
         });
         
@@ -89,7 +89,7 @@ export function EmailSender({ defaultSubject = "", defaultMessage = "" }: EmailS
       <CardHeader>
         <CardTitle>Send Email</CardTitle>
         <CardDescription>
-          Send an email directly using EmailEngine
+          Send an email directly using Mailpit
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -124,7 +124,7 @@ export function EmailSender({ defaultSubject = "", defaultMessage = "" }: EmailS
           />
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-col space-y-2">
         <Button 
           onClick={handleSendEmail} 
           disabled={isSending}
@@ -132,6 +132,14 @@ export function EmailSender({ defaultSubject = "", defaultMessage = "" }: EmailS
         >
           {isSending ? "Sending..." : "Send Email"}
         </Button>
+        <a 
+          href="https://crm-mailpit.7za6uc.easypanel.host/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-xs text-blue-500 hover:underline w-full text-center"
+        >
+          View sent emails in Mailpit UI
+        </a>
       </CardFooter>
     </Card>
   );

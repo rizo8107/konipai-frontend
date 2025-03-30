@@ -33,11 +33,8 @@
     "VITE_PROXY_DEBUG": "true",
     "VITE_APP_DOMAIN": "crm-frontend.7za6uc.easypanel.host",
     "VITE_BASE_URL": "https://crm-frontend.7za6uc.easypanel.host",
-    "VITE_EMAILENGINE_URL": "https://api.emailengine.app",
-    "VITE_EMAILENGINE_API_KEY": "your_api_key_here",
-    "VITE_EMAIL_FROM": "support@konipai.in",
-    "VITE_EMAIL_FROM_NAME": "Konipai CRM",
-    "VITE_EMAILENGINE_ACCOUNT": "default"
+    "VITE_MAILPIT_API_URL": "https://crm-mailpit.7za6uc.easypanel.host/api/v1",
+    "VITE_EMAIL_FROM": "support@konipai.in"
   },
   "healthCheck": {
     "path": "/",

@@ -1,4 +1,3 @@
-import emailjs from '@emailjs/browser';
 import axios from 'axios';
 import { Order, OrderItem } from '@/types/schema';
 
@@ -39,18 +38,11 @@ export enum EmailTemplate {
 }
 
 // Constants from environment variables
-const EMAIL_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'default_service';
-const EMAIL_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'default_template';
-const EMAIL_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || '';
+const MAILPIT_API_URL = import.meta.env.VITE_MAILPIT_API_URL || 'https://crm-mailpit.7za6uc.easypanel.host/api/v1';
 const EMAIL_FROM = import.meta.env.VITE_EMAIL_FROM || 'support@konipai.in';
 
-// Initialize EmailJS
-const initEmailJs = () => {
-  emailjs.init(EMAIL_PUBLIC_KEY);
-};
-
 /**
- * Send an email message directly from the browser
+ * Send an email message using Mailpit
  * @param to - Recipient email address
  * @param subject - Email subject
  * @param message - Email content (HTML)
@@ -63,31 +55,37 @@ export async function sendEmailMessage(
   variables?: Record<string, string>
 ): Promise<EmailApiResponse> {
   try {
-    // Initialize EmailJS if not already initialized
-    initEmailJs();
-
     // Validate email format
     if (!isValidEmail(to)) {
       throw new Error('Invalid email address format');
     }
     
-    // Prepare EmailJS template parameters
-    const templateParams = {
-      to_email: to,
-      from_email: EMAIL_FROM,
-      subject: subject,
-      message: message,
-      ...variables
-    };
+    // Apply variables to message content if provided
+    let finalMessage = message;
+    if (variables) {
+      Object.entries(variables).forEach(([key, value]) => {
+        const regex = new RegExp(`{{${key}}}`, 'g');
+        finalMessage = finalMessage.replace(regex, value);
+      });
+    }
     
     console.log('Sending email to:', to);
     
-    // Send email using EmailJS
-    const response = await emailjs.send(EMAIL_SERVICE_ID, EMAIL_TEMPLATE_ID, templateParams);
+    // Prepare email data for Mailpit API
+    const emailData = {
+      from: EMAIL_FROM,
+      to: [to],
+      subject: subject,
+      html: finalMessage,
+      text: stripHtml(finalMessage)
+    };
     
-    console.log('Email sent successfully:', response);
+    // Send email via Mailpit API
+    const response = await axios.post(`${MAILPIT_API_URL}/send`, emailData);
     
-    // Log activity if configured
+    console.log('Email sent successfully:', response.data);
+    
+    // Log activity
     try {
       await logEmailActivity({
         order_id: variables?.orderId || 'N/A',
@@ -106,7 +104,7 @@ export async function sendEmailMessage(
     return {
       success: true,
       message: 'Email sent',
-      messageId: response.status.toString(),
+      messageId: response.data.ID || `mailpit-${Date.now()}`,
       status: 'sent',
       timestamp: new Date().toISOString()
     };
@@ -115,7 +113,9 @@ export async function sendEmailMessage(
     
     // Extract error message
     let errorMessage = 'Failed to send email';
-    if (error instanceof Error) {
+    if (axios.isAxiosError(error)) {
+      errorMessage = error.response?.data?.message || error.message;
+    } else if (error instanceof Error) {
       errorMessage = error.message;
     }
     
@@ -278,7 +278,7 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * Check if email service is configured and ready
+ * Check if Mailpit service is available
  * @returns Object with connection status
  */
 export async function checkEmailConnection(): Promise<{
@@ -287,29 +287,30 @@ export async function checkEmailConnection(): Promise<{
   message?: string;
 }> {
   try {
-    // Verify EmailJS configuration
-    if (!EMAIL_SERVICE_ID || !EMAIL_TEMPLATE_ID || !EMAIL_PUBLIC_KEY) {
-      return {
-        connected: false,
-        status: 'unconfigured',
-        message: 'EmailJS configuration is incomplete. Please check your environment variables.'
-      };
-    }
-    
-    // Initialize EmailJS
-    initEmailJs();
+    // Check Mailpit API health
+    const response = await axios.get(`${MAILPIT_API_URL}/messages`);
     
     return {
-      connected: true,
-      status: 'configured',
-      message: 'EmailJS is configured and ready to use'
+      connected: response.status === 200,
+      status: 'connected',
+      message: 'Mailpit is configured and available'
     };
   } catch (error) {
-    console.error('Error checking email connection:', error);
+    console.error('Error checking Mailpit connection:', error);
     return {
       connected: false,
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to check email connection'
+      message: error instanceof Error ? error.message : 'Failed to check Mailpit connection'
     };
   }
+}
+
+/**
+ * Strip HTML tags from a string to create plain text version
+ * @param html HTML string
+ * @returns Plain text string
+ */
+function stripHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return doc.body.textContent || '';
 } 
