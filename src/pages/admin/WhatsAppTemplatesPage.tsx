@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Edit, Trash2, Plus, Save, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Edit, Trash2, Plus, Save, X, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { WhatsAppTemplate } from '@/lib/whatsapp';
 import { useWhatsAppTemplates, Template } from '@/hooks/useWhatsAppTemplates';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -151,7 +151,7 @@ export default function WhatsAppTemplatesPage() {
   };
 
   // Generate template content using Gemini AI
-  const generateTemplate = async () => {
+  const handleGenerateContent = async () => {
     if (!newTemplate.name) {
       toast.error('Please enter a template name first');
       return;
@@ -407,171 +407,141 @@ export default function WhatsAppTemplatesPage() {
 
         {/* Create Template Dialog */}
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Create Template</DialogTitle>
               <DialogDescription>
                 Create a new WhatsApp message template.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-name">Template Name</Label>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="template-name">Template Name</Label>
                 <Input
-                  id="new-name"
+                  id="template-name"
                   value={newTemplate.name}
-                  onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
                   placeholder="e.g., order_confirmation"
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="new-description">Description</Label>
+              <div className="grid gap-2">
+                <Label htmlFor="template-description">Description</Label>
                 <Input
-                  id="new-description"
+                  id="template-description"
                   value={newTemplate.description}
-                  onChange={(e) => setNewTemplate({...newTemplate, description: e.target.value})}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })}
                   placeholder="e.g., Sent when an order is confirmed"
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="new-content">Template Content</Label>
-                <div className="flex items-start">
+              <div className="grid gap-2">
+                <Label htmlFor="template-content">Template Content</Label>
+                <div className="relative">
                   <Textarea
-                    id="new-content"
+                    id="template-content"
                     value={newTemplate.content}
-                    onChange={(e) => setNewTemplate({...newTemplate, content: e.target.value})}
-                    rows={6}
-                    placeholder="Enter template content. Use *text* for bold formatting."
+                    onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
+                    placeholder="Enter your template content with variables like {{customerName}}"
+                    className="min-h-[200px] font-mono text-sm resize-y"
                   />
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="ml-2 flex items-center gap-2" type="button">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21s-4-3-4-9 4-9 4-9"/><path d="M16 3s4 3 4 9-4 9-4 9"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>
-                        <span>Add Variables</span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Search variables..." />
-                        <CommandList>
-                          <CommandEmpty>No variables found.</CommandEmpty>
-                          <CommandGroup heading="Available Variables">
-                            {templateVariables.map((variable) => (
-                              <CommandItem key={variable.name} onSelect={() => insertVariable('new-content', variable.name)}>
-                                <span className="font-medium">{`{{${variable.name}}}`}</span>
-                                <span className="text-xs text-muted-foreground ml-2">{variable.description}</span>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        className="ml-2 flex items-center gap-2" 
-                        onClick={(e) => {
-                          e.preventDefault(); // Prevent triggering popover
-                          generateTemplate();
-                        }}
-                        disabled={isGenerating || !newTemplate.name}
-                      >
-                        {isGenerating ? (
-                          <>
-                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Generating...</span>
-                          </>
-                        ) : (
-                          <>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 16a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 20"></path><path d="M16 16h5v5"></path><path d="M21 8 19 10l-2-2"></path><path d="M3 16l2-2 2 2"></path></svg>
-                            <span>Generate with AI</span>
-                          </>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="p-4" align="start">
-                      <div className="space-y-2">
-                        <h4 className="font-medium">AI Template Generation</h4>
-                        <p className="text-sm text-muted-foreground">Generate a template using AI based on the template name.</p>
-                        <Button 
-                          className="w-full" 
-                          onClick={generateTemplate}
-                          disabled={isGenerating || !newTemplate.name}
-                        >
-                          {isGenerating ? 'Generating...' : 'Generate Template'}
+                  <div className="flex gap-2 mt-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" type="button">
+                          <span className="mr-1">Variables</span>
                         </Button>
-                        {generationError && (
-                          <p className="text-xs text-red-500">{generationError}</p>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-60">
+                        <div className="space-y-2">
+                          <h4 className="font-medium">Common Variables</h4>
+                          <div className="grid gap-1">
+                            {['customerName', 'orderId', 'amount', 'feedbackLink'].map((variable) => (
+                              <Button
+                                key={variable}
+                                variant="ghost"
+                                size="sm"
+                                className="justify-start"
+                                onClick={() => {
+                                  setNewTemplate({
+                                    ...newTemplate,
+                                    content: newTemplate.content + `{{${variable}}}`
+                                  });
+                                }}
+                              >
+                                {`{{${variable}}}`}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      type="button" 
+                      onClick={handleGenerateContent}
+                      disabled={isGenerating}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <span className="mr-1">Generating...</span>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </>
+                      ) : (
+                        <>
+                          <span className="mr-1">Generate with AI</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  {generationError && (
+                    <p className="text-sm text-red-500 mt-2">{generationError}</p>
+                  )}
                 </div>
               </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="new-requiresAdditionalInfo"
-                  checked={newTemplate.requiresAdditionalInfo}
-                  onCheckedChange={(checked) => setNewTemplate({...newTemplate, requiresAdditionalInfo: checked})}
-                />
-                <Label htmlFor="new-requiresAdditionalInfo">Requires Additional Information</Label>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="requires-additional-info"
+                    checked={newTemplate.requiresAdditionalInfo}
+                    onCheckedChange={(checked) => setNewTemplate({ ...newTemplate, requiresAdditionalInfo: checked })}
+                  />
+                  <Label htmlFor="requires-additional-info">Requires Additional Information</Label>
+                </div>
               </div>
-
               {newTemplate.requiresAdditionalInfo && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-additionalInfoLabel">Additional Info Label</Label>
+                <>
+                  <div className="grid gap-2">
+                    <Label htmlFor="additional-info-label">Additional Info Label</Label>
                     <Input
-                      id="new-additionalInfoLabel"
-                      value={newTemplate.additionalInfoLabel}
-                      onChange={(e) => setNewTemplate({...newTemplate, additionalInfoLabel: e.target.value})}
+                      id="additional-info-label"
+                      value={newTemplate.additionalInfoLabel || ''}
+                      onChange={(e) => setNewTemplate({ ...newTemplate, additionalInfoLabel: e.target.value })}
                       placeholder="e.g., Tracking Number"
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="new-additionalInfoPlaceholder">Additional Info Placeholder</Label>
+                  <div className="grid gap-2">
+                    <Label htmlFor="additional-info-placeholder">Additional Info Placeholder</Label>
                     <Input
-                      id="new-additionalInfoPlaceholder"
-                      value={newTemplate.additionalInfoPlaceholder}
-                      onChange={(e) => setNewTemplate({...newTemplate, additionalInfoPlaceholder: e.target.value})}
+                      id="additional-info-placeholder"
+                      value={newTemplate.additionalInfoPlaceholder || ''}
+                      onChange={(e) => setNewTemplate({ ...newTemplate, additionalInfoPlaceholder: e.target.value })}
                       placeholder="e.g., Enter tracking number"
                     />
                   </div>
-                </div>
+                </>
               )}
-
               <div className="flex items-center space-x-2">
                 <Switch
-                  id="new-isActive"
+                  id="is-active"
                   checked={newTemplate.isActive}
-                  onCheckedChange={(checked) => setNewTemplate({...newTemplate, isActive: checked})}
+                  onCheckedChange={(checked) => setNewTemplate({ ...newTemplate, isActive: checked })}
                 />
-                <Label htmlFor="new-isActive">Active</Label>
+                <Label htmlFor="is-active">Active</Label>
               </div>
-
-              {newTemplate.content && (
-                <div className="pt-4">
-                  <Label>Preview</Label>
-                  <div className="bg-[#0b141a] p-4 mt-2 rounded-md">
-                    <div className="bg-[#005c4b] text-white p-3 rounded-lg max-w-[80%] ml-auto whitespace-pre-wrap text-sm">
-                      {renderTemplatePreview(newTemplate.content)}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreateTemplate}>Create Template</Button>
+              <Button type="submit" onClick={handleCreateTemplate}>Create Template</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
