@@ -1,32 +1,31 @@
+# Build stage
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json ./
+# Copy package files first for better caching
+COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies with clean npm install
+RUN npm ci
 
-# Copy all files
+# Copy rest of the application
 COPY . .
 
-# Build frontend
+# Build the application
 RUN npm run build
 
-# Production image
-FROM node:20-alpine AS runner
+# Production stage
+FROM nginx:alpine AS runner
 
-WORKDIR /app
-
-# Install serve for static file serving
-RUN npm install -g serve
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built files from builder stage
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Expose port
-EXPOSE 5000
+EXPOSE 80
 
-# Start frontend
-CMD ["serve", "-s", "dist", "-l", "5000"] 
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"] 
