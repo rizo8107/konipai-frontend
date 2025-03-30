@@ -15,6 +15,7 @@ COPY src ./src
 COPY public ./public
 COPY index.html ./
 COPY vite.config.ts ./
+COPY frontend.config.ts ./
 COPY server.js ./
 
 # Display TypeScript config files for debugging
@@ -46,6 +47,7 @@ RUN npm install --omit=dev
 
 # Copy server.js file
 COPY server.js ./
+COPY frontend.config.ts ./
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
