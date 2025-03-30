@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -19,11 +19,13 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { useWhatsAppActivities } from '@/hooks/useWhatsAppActivities';
 import { WhatsAppActivities } from '@/components/orders/WhatsAppActivities';
 import { SendWhatsAppMessage } from '@/components/orders/SendWhatsAppMessage';
-import { MessageSquare, Mail } from 'lucide-react';
+import { MessageSquare, Mail, Edit } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEmailActivities } from '@/hooks/useEmailActivities';
 import { EmailActivities } from '@/components/orders/EmailActivities';
 import { SendEmailMessage } from '@/components/orders/SendEmailMessage';
+import { useOrders } from '@/hooks/useOrders';
+import { EditOrderDialog } from './EditOrderDialog';
 
 type BadgeVariant = 'default' | 'destructive' | 'outline' | 'secondary' | 'success' | 'warning';
 
@@ -49,6 +51,8 @@ interface ProductItem {
 
 export function ViewOrderDialog({ open, onOpenChange, order }: ViewOrderDialogProps) {
   const queryClient = useQueryClient();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { updateOrder } = useOrders();
 
   const orderStatusVariant: Record<string, BadgeVariant> = {
     pending: 'warning',
@@ -133,6 +137,19 @@ export function ViewOrderDialog({ open, onOpenChange, order }: ViewOrderDialogPr
     } catch (e) {
       console.error('Error formatting image URL:', e);
       return 'https://placehold.co/200x200/e2e8f0/64748b?text=No+Image';
+    }
+  };
+
+  const handleEditOrder = () => {
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateOrder = async (id: string, data: any) => {
+    try {
+      await updateOrder.mutateAsync({ id, data });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    } catch (error) {
+      console.error('Error updating order:', error);
     }
   };
 
@@ -428,35 +445,76 @@ export function ViewOrderDialog({ open, onOpenChange, order }: ViewOrderDialogPr
 
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+          <Button variant="outline" onClick={handleEditOrder}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Order
+          </Button>
           <Button>Print Invoice</Button>
         </div>
       </DialogContent>
+
+      <EditOrderDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        order={order}
+        onSubmit={handleUpdateOrder}
+      />
     </Dialog>
   );
 }
 
 // WhatsApp Activities Tab Component
 function WhatsAppActivitiesTab({ orderId }: { orderId: string }) {
-  const { activities, isLoading, refetch } = useWhatsAppActivities(orderId);
+  const { activities, isLoading, error } = useWhatsAppActivities(orderId);
+  const queryClient = useQueryClient();
   
-  return (
-    <WhatsAppActivities 
-      activities={activities} 
-      isLoading={isLoading} 
-      orderId={orderId} 
-    />
-  );
+  const refreshActivities = () => {
+    queryClient.invalidateQueries({ queryKey: ['whatsapp_activities', orderId] });
+  };
+
+  if (isLoading) {
+    return <div className="text-center py-4">Loading activities...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-4 text-red-500">
+        Error loading WhatsApp activities
+      </div>
+    );
+  }
+
+  if (activities.length === 0) {
+    return <div className="text-center py-4">No WhatsApp activities found</div>;
+  }
+
+  return <WhatsAppActivities activities={activities} isLoading={isLoading} orderId={orderId} />;
 }
 
 // Email Activities Tab Component
 function EmailActivitiesTab({ orderId }: { orderId: string }) {
-  const { activities, isLoading, refetch } = useEmailActivities(orderId);
-  
-  return (
-    <EmailActivities 
-      activities={activities} 
-      isLoading={isLoading} 
-      orderId={orderId} 
-    />
-  );
+  const { activities, isLoading, error } = useEmailActivities(orderId);
+  const queryClient = useQueryClient();
+
+  const refreshActivities = () => {
+    queryClient.invalidateQueries({ queryKey: ['email_activities', orderId] });
+  };
+
+  if (isLoading) {
+    return <div className="text-center py-4">Loading activities...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-4 text-red-500">
+        Error loading email activities
+      </div>
+    );
+  }
+
+  if (activities.length === 0) {
+    return <div className="text-center py-4">No email activities found</div>;
+  }
+
+  return <EmailActivities activities={activities} isLoading={isLoading} orderId={orderId} />;
 }

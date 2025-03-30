@@ -1,5 +1,5 @@
 import PocketBase from 'pocketbase';
-import { frontendConfig } from '../frontend.config';
+import { frontendConfig } from '../../frontend.config';
 
 /**
  * PocketBase service for interacting with the PocketBase backend

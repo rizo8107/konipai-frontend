@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Table, 
@@ -39,6 +38,7 @@ interface OrdersTableProps {
   orders: Order[];
   isLoading?: boolean;
   onViewOrder: (order: Order) => void;
+  onEditOrder?: (order: Order) => void;
   onUpdateStatus: (orderId: string, status: OrderStatus) => void;
 }
 
@@ -83,6 +83,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
   orders, 
   isLoading, 
   onViewOrder, 
+  onEditOrder,
   onUpdateStatus 
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -193,6 +194,12 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                           <Eye size={14} className="mr-2" />
                           View Details
                         </DropdownMenuItem>
+                        {onEditOrder && (
+                          <DropdownMenuItem onClick={() => onEditOrder(order)}>
+                            <Edit size={14} className="mr-2" />
+                            Edit Order
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem>
                           <Edit size={14} className="mr-2" />
                           Update Status
