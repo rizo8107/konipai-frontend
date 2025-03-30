@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { pb } from '@/lib/pocketbase';
 import { WhatsAppTemplate } from '@/lib/whatsapp';
 import { toast } from 'sonner';
-import { fetchUniqueTemplates, removeDuplicateTemplates, createOrUpdateTemplate, ensureOrderDeliveredTemplateHasFeedbackLink } from '@/lib/whatsapp-template-manager';
+import { fetchUniqueTemplates, removeDuplicateTemplates, createOrUpdateTemplate, ensureOrderDeliveredTemplateHasFeedbackLink } from '@/lib/whatsapp-template-manager.js';
 
 export interface Template {
   id: string;
