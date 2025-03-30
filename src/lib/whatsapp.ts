@@ -1208,30 +1208,60 @@ export async function checkWhatsAppConnection(): Promise<{
       message: response.data.message || 'WhatsApp API is connected'
     };
   } catch (error) {
-    // More detailed error logging
-    if (axios.isAxiosError(error)) {
-      console.error('WhatsApp API connection error:', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        config: {
-          url: error.config?.url,
-          method: error.config?.method,
-          headers: error.config?.headers
-        }
-      });
-    } else {
-      console.error('Unknown WhatsApp connection error:', error);
-    }
+    console.error('Primary WhatsApp connection check failed, trying fallback...');
     
-    // Return disconnected status with more informative message
-    return {
-      connected: false,
-      status: 'disconnected',
-      message: axios.isAxiosError(error) 
-        ? `WhatsApp API connection failed: ${error.message}` 
-        : 'Unable to connect to WhatsApp API'
-    };
+    try {
+      // Try using our fallback direct endpoint
+      const fallbackUrl = '/whatsapp-status';
+      console.log('Using fallback endpoint:', fallbackUrl);
+      
+      const fallbackResponse = await axios.get(fallbackUrl, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: 5000
+      });
+      
+      console.log('Fallback endpoint response:', fallbackResponse.data);
+      
+      if (fallbackResponse.data.success) {
+        return {
+          connected: true,
+          status: fallbackResponse.data.status || 'connected',
+          message: fallbackResponse.data.message || 'WhatsApp API is connected via fallback'
+        };
+      }
+      
+      throw new Error(fallbackResponse.data.message || 'Fallback also failed');
+    } catch (fallbackError) {
+      console.error('Fallback WhatsApp check also failed:', fallbackError);
+      
+      // More detailed error logging for the original error
+      if (axios.isAxiosError(error)) {
+        console.error('Original WhatsApp API connection error:', {
+          message: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            headers: error.config?.headers
+          }
+        });
+      } else {
+        console.error('Unknown WhatsApp connection error:', error);
+      }
+      
+      // Return disconnected status with more informative message
+      return {
+        connected: false,
+        status: 'disconnected',
+        message: axios.isAxiosError(error) 
+          ? `WhatsApp API connection failed: ${error.message}` 
+          : 'Unable to connect to WhatsApp API'
+      };
+    }
   }
 }
