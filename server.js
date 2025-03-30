@@ -20,6 +20,7 @@ const CORS_ORIGIN = process.env.VITE_CORS_ORIGIN || '*';
 const DEFAULT_API_URL = process.env.VITE_API_URL || 'https://backend-server.7za6uc.easypanel.host/api';
 const DEFAULT_EMAIL_API_URL = process.env.VITE_EMAIL_API_URL || 'https://backend-server.7za6uc.easypanel.host/email-api';
 const DEFAULT_WHATSAPP_API_URL = process.env.VITE_WHATSAPP_API_URL || 'https://backend-whatsappapi.7za6uc.easypanel.host';
+const DEFAULT_POCKETBASE_URL = process.env.VITE_POCKETBASE_URL || 'https://backend-pocketbase.7za6uc.easypanel.host';
 
 // Log environment settings if debugging is enabled
 if (DEBUG) {
@@ -30,6 +31,7 @@ if (DEBUG) {
   console.log('DEFAULT_API_URL:', DEFAULT_API_URL);
   console.log('DEFAULT_EMAIL_API_URL:', DEFAULT_EMAIL_API_URL);
   console.log('DEFAULT_WHATSAPP_API_URL:', DEFAULT_WHATSAPP_API_URL);
+  console.log('DEFAULT_POCKETBASE_URL:', DEFAULT_POCKETBASE_URL);
 }
 
 // Add CORS middleware - must be before proxy configuration
@@ -106,6 +108,73 @@ app.use('/api', createProxyMiddleware(createProxyOptions(DEFAULT_API_URL, '/api'
 app.use('/email-api', createProxyMiddleware(createProxyOptions(DEFAULT_EMAIL_API_URL, '/email-api')));
 app.use('/whatsapp-api', createProxyMiddleware(createProxyOptions(DEFAULT_WHATSAPP_API_URL, '/whatsapp-api')));
 
+// Add PocketBase proxy
+app.use('/pocketbase', createProxyMiddleware({
+  target: DEFAULT_POCKETBASE_URL,
+  changeOrigin: true,
+  pathRewrite: { '^/pocketbase': '' },
+  secure: false,
+  logLevel: DEBUG ? 'debug' : 'error',
+  onProxyReq: (proxyReq, req, res) => {
+    proxyReq.setHeader('Origin', DEFAULT_POCKETBASE_URL);
+    proxyReq.setHeader('Host', new URL(DEFAULT_POCKETBASE_URL).host);
+    if (DEBUG) {
+      console.log(`Proxying PocketBase request to: ${DEFAULT_POCKETBASE_URL}${req.url.replace('/pocketbase', '')}`);
+    }
+  },
+  onProxyRes: (proxyRes, req, res) => {
+    proxyRes.headers['Access-Control-Allow-Origin'] = CORS_ORIGIN;
+    proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS';
+    proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With, Cache-Control';
+  },
+  onError: (err, req, res) => {
+    console.error(`PocketBase proxy error: ${req.url}`, err);
+    res.writeHead(500, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': CORS_ORIGIN
+    });
+    res.end(JSON.stringify({
+      message: `Error connecting to PocketBase at ${DEFAULT_POCKETBASE_URL}`,
+      error: err.message
+    }));
+  }
+}));
+
+// Health check endpoint for PocketBase (direct access)
+app.get('/pocketbase-status', async (req, res) => {
+  try {
+    console.log(`Checking PocketBase status at ${DEFAULT_POCKETBASE_URL}/api/health`);
+    
+    const fetch = (await import('node-fetch')).default;
+    const response = await fetch(`${DEFAULT_POCKETBASE_URL}/api/health`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': DEFAULT_POCKETBASE_URL
+      },
+      timeout: 5000
+    });
+    
+    const data = await response.json();
+    console.log('PocketBase health response:', data);
+    
+    res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+    res.status(200).json({
+      success: true,
+      message: 'PocketBase is healthy',
+      data
+    });
+  } catch (error) {
+    console.error('Error checking PocketBase health:', error);
+    
+    res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to connect to PocketBase',
+      error: error.message
+    });
+  }
+});
+
 // Special health check endpoint for WhatsApp API (as a fallback)
 app.get('/whatsapp-status', async (req, res) => {
   try {
@@ -168,4 +237,5 @@ app.listen(PORT, () => {
   console.log(`API Proxy: ${DEFAULT_API_URL}`);
   console.log(`Email API Proxy: ${DEFAULT_EMAIL_API_URL}`);
   console.log(`WhatsApp API Proxy: ${DEFAULT_WHATSAPP_API_URL}`);
+  console.log(`PocketBase URL: ${DEFAULT_POCKETBASE_URL}`);
 }); 

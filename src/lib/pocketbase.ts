@@ -1,140 +1,50 @@
 import PocketBase from 'pocketbase';
-import { frontendConfig } from '../../frontend.config';
 
-/**
- * PocketBase service for interacting with the PocketBase backend
- */
-export class PocketBaseService {
-  private pb: PocketBase;
-  
-  constructor() {
-    // Initialize PocketBase with the configured URL
-    this.pb = new PocketBase(frontendConfig.pocketbase.url);
-    
-    // Load auth data from storage if available
-    const authData = localStorage.getItem('pocketbase_auth');
-    if (authData) {
-      try {
-        this.pb.authStore.save(JSON.parse(authData));
-      } catch (error) {
-        console.error('Failed to load auth data from storage:', error);
-        localStorage.removeItem('pocketbase_auth');
-      }
+// Get PocketBase URL from environment variables or use a default
+function getPocketBaseUrl() {
+  // Check if we're in browser context
+  if (typeof window !== 'undefined') {
+    // If we're in production (running on Easypanel)
+    if (window.location.hostname.includes('easypanel.host')) {
+      console.log('Production environment detected, using proxy for PocketBase');
+      // Use relative URL to use our proxy
+      return '/pocketbase';
     }
-    
-    // Save auth data to storage when it changes
-    this.pb.authStore.onChange(() => {
-      if (this.pb.authStore.isValid) {
-        localStorage.setItem('pocketbase_auth', JSON.stringify(this.pb.authStore.exportToCookie()));
-      } else {
-        localStorage.removeItem('pocketbase_auth');
-      }
-    });
   }
   
-  /**
-   * Get the PocketBase instance
-   */
-  getPocketBase(): PocketBase {
-    return this.pb;
+  // Use environment variable if available
+  const envUrl = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_POCKETBASE_URL;
+  
+  if (!envUrl) {
+    console.warn('VITE_POCKETBASE_URL not found in environment, using default URL');
+    return 'https://backend-pocketbase.7za6uc.easypanel.host';
   }
   
-  /**
-   * Check if the user is authenticated
-   */
-  isAuthenticated(): boolean {
-    return this.pb.authStore.isValid;
-  }
-  
-  /**
-   * Get the current user ID
-   */
-  getCurrentUserId(): string | null {
-    return this.pb.authStore.model?.id || null;
-  }
-  
-  /**
-   * Get the current user model
-   */
-  getCurrentUser(): any {
-    return this.pb.authStore.model;
-  }
-  
-  /**
-   * Get a list of records from a collection
-   * @param collection The collection name
-   * @param page The page number
-   * @param perPage Number of items per page
-   * @param filter Filter string
-   * @param sort Sort string
-   */
-  async getList(collection: string, page = 1, perPage = 50, filter = '', sort = ''): Promise<any> {
-    return await this.pb.collection(collection).getList(page, perPage, {
-      filter,
-      sort,
-    });
-  }
-  
-  /**
-   * Get a record by ID
-   * @param collection The collection name
-   * @param id The record ID
-   */
-  async getOne(collection: string, id: string): Promise<any> {
-    return await this.pb.collection(collection).getOne(id);
-  }
-  
-  /**
-   * Create a new record
-   * @param collection The collection name
-   * @param data The record data
-   */
-  async create(collection: string, data: any): Promise<any> {
-    return await this.pb.collection(collection).create(data);
-  }
-  
-  /**
-   * Update a record
-   * @param collection The collection name
-   * @param id The record ID
-   * @param data The updated data
-   */
-  async update(collection: string, id: string, data: any): Promise<any> {
-    return await this.pb.collection(collection).update(id, data);
-  }
-  
-  /**
-   * Delete a record
-   * @param collection The collection name
-   * @param id The record ID
-   */
-  async delete(collection: string, id: string): Promise<boolean> {
-    return await this.pb.collection(collection).delete(id);
-  }
-  
-  /**
-   * Get the file URL for a record
-   * @param record The record object
-   * @param filename The filename field
-   */
-  getFileUrl(record: any, filename: string): string {
-    return this.pb.files.getUrl(record, filename);
-  }
-  
-  /**
-   * Get the auth token
-   */
-  getAuthToken(): string {
-    return this.pb.authStore.token;
-  }
+  return envUrl;
 }
 
 // Initialize PocketBase with the URL from environment variables
-export const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
+export const pb = new PocketBase(getPocketBaseUrl());
 
 // Add a timeout to PocketBase requests
 const AUTH_TIMEOUT = 10000; // 10 seconds
 const MAX_RETRIES = 3;
+
+// Helper to get admin credentials from environment
+function getAdminCredentials() {
+  // Default fallback credentials
+  const defaultEmail = 'nnirmal7107@gmail.com';
+  const defaultPassword = 'Kamala@7107';
+  
+  // Try to get from environment variables
+  const email = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.POCKETBASE_ADMIN_EMAIL;
+  const password = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.POCKETBASE_ADMIN_PASSWORD;
+  
+  return {
+    email: email || defaultEmail,
+    password: password || defaultPassword
+  };
+}
 
 // Auto authenticate with admin credentials
 export const initAdmin = async (retryCount = 0) => {
@@ -144,11 +54,11 @@ export const initAdmin = async (retryCount = 0) => {
       throw new Error('Failed to authenticate after multiple attempts');
     }
     
+    const { email, password } = getAdminCredentials();
+    console.log('Attempting admin authentication with:', email);
+    
     // Set a timeout for the authentication request
-    const authPromise = pb.admins.authWithPassword(
-      import.meta.env.POCKETBASE_ADMIN_EMAIL || 'nnirmal7107@gmail.com',
-      import.meta.env.POCKETBASE_ADMIN_PASSWORD || 'Kamala@7107'
-    );
+    const authPromise = pb.admins.authWithPassword(email, password);
     
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Authentication timed out')), AUTH_TIMEOUT);
@@ -349,5 +259,15 @@ export const getImageUrl = (collectionId: string, recordId: string, fileName: st
     console.warn('Missing parameters for getImageUrl', { collectionId, recordId, fileName });
     return 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image';
   }
-  return `${import.meta.env.VITE_POCKETBASE_URL}/api/files/${collectionId}/${recordId}/${fileName}`;
+  
+  // Get the base URL - using same logic as client initialization
+  const baseUrl = getPocketBaseUrl();
+  
+  // Check if we're using a proxy (relative URL)
+  if (baseUrl.startsWith('/')) {
+    return `${baseUrl}/api/files/${collectionId}/${recordId}/${fileName}`;
+  }
+  
+  // Otherwise use the full URL
+  return `${baseUrl}/api/files/${collectionId}/${recordId}/${fileName}`;
 };

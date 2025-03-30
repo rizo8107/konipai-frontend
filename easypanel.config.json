@@ -21,7 +21,9 @@
     "VITE_API_URL": "https://backend-server.7za6uc.easypanel.host/api",
     "VITE_EMAIL_API_URL": "https://backend-server.7za6uc.easypanel.host/email-api",
     "VITE_WHATSAPP_API_URL": "https://backend-whatsappapi.7za6uc.easypanel.host",
-    "VITE_POCKETBASE_URL": "https://backend-pocketbase.7za6uc.easypanel.host/",
+    "VITE_POCKETBASE_URL": "https://backend-pocketbase.7za6uc.easypanel.host",
+    "POCKETBASE_ADMIN_EMAIL": "nnirmal7107@gmail.com",
+    "POCKETBASE_ADMIN_PASSWORD": "Kamala@7107",
     "VITE_SITE_TITLE": "Konipai CRM",
     "VITE_SITE_LOGO": "https://konipai.in/assets/logo.png",
     "VITE_RAZORPAY_KEY_ID": "rzp_live_3rZx2njbNwMEE1",
@@ -29,7 +31,8 @@
     "VITE_MAX_UPLOAD_SIZE": "5242880",
     "VITE_CORS_ORIGIN": "*",
     "VITE_PROXY_DEBUG": "true",
-    "VITE_APP_DOMAIN": "crm-frontend.7za6uc.easypanel.host"
+    "VITE_APP_DOMAIN": "crm-frontend.7za6uc.easypanel.host",
+    "VITE_BASE_URL": "https://crm-frontend.7za6uc.easypanel.host"
   },
   "healthCheck": {
     "path": "/",
