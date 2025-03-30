@@ -52,7 +52,7 @@ export function EmailSender({ defaultSubject = "", defaultMessage = "" }: EmailS
     setIsSending(true);
 
     try {
-      // Send the email directly using EmailJS
+      // Send the email directly using EmailEngine
       const result = await sendEmailMessage(recipient, subject, message);
 
       if (result.success) {
@@ -89,7 +89,7 @@ export function EmailSender({ defaultSubject = "", defaultMessage = "" }: EmailS
       <CardHeader>
         <CardTitle>Send Email</CardTitle>
         <CardDescription>
-          Send an email directly from the browser using EmailJS
+          Send an email directly using EmailEngine
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

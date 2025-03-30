@@ -1,4 +1,3 @@
-import emailjs from '@emailjs/browser';
 import axios from 'axios';
 import { Order, OrderItem } from '@/types/schema';
 
@@ -39,18 +38,23 @@ export enum EmailTemplate {
 }
 
 // Constants from environment variables
-const EMAIL_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'default_service';
-const EMAIL_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'default_template';
-const EMAIL_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || '';
+const EMAILENGINE_URL = import.meta.env.VITE_EMAILENGINE_URL || 'https://api.emailengine.app';
+const EMAILENGINE_API_KEY = import.meta.env.VITE_EMAILENGINE_API_KEY || '';
 const EMAIL_FROM = import.meta.env.VITE_EMAIL_FROM || 'support@konipai.in';
+const EMAIL_FROM_NAME = import.meta.env.VITE_EMAIL_FROM_NAME || 'Konipai CRM';
+const SMTP_ACCOUNT = import.meta.env.VITE_EMAILENGINE_ACCOUNT || 'default';
 
-// Initialize EmailJS
-const initEmailJs = () => {
-  emailjs.init(EMAIL_PUBLIC_KEY);
-};
+// Configure axios instance for EmailEngine
+const emailEngineClient = axios.create({
+  baseURL: EMAILENGINE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': EMAILENGINE_API_KEY
+  }
+});
 
 /**
- * Send an email message directly from the browser
+ * Send an email message directly using EmailEngine API
  * @param to - Recipient email address
  * @param subject - Email subject
  * @param message - Email content (HTML)
@@ -63,29 +67,37 @@ export async function sendEmailMessage(
   variables?: Record<string, string>
 ): Promise<EmailApiResponse> {
   try {
-    // Initialize EmailJS if not already initialized
-    initEmailJs();
-
     // Validate email format
     if (!isValidEmail(to)) {
       throw new Error('Invalid email address format');
     }
     
-    // Prepare EmailJS template parameters
-    const templateParams = {
-      to_email: to,
-      from_email: EMAIL_FROM,
+    // Prepare EmailEngine submission data
+    const emailData = {
+      account: SMTP_ACCOUNT,
+      from: {
+        name: EMAIL_FROM_NAME,
+        address: EMAIL_FROM
+      },
+      to: [
+        {
+          address: to
+        }
+      ],
       subject: subject,
-      message: message,
-      ...variables
+      html: message,
+      headers: {
+        'X-Tracking-ID': variables?.orderId || `track-${Date.now()}`,
+        'X-Template-Name': variables?.templateName || 'custom_email'
+      }
     };
     
     console.log('Sending email to:', to);
     
-    // Send email using EmailJS
-    const response = await emailjs.send(EMAIL_SERVICE_ID, EMAIL_TEMPLATE_ID, templateParams);
+    // Send email using EmailEngine API
+    const response = await emailEngineClient.post('/v1/submit', emailData);
     
-    console.log('Email sent successfully:', response);
+    console.log('Email sent successfully:', response.data);
     
     // Log activity if configured
     try {
@@ -106,7 +118,7 @@ export async function sendEmailMessage(
     return {
       success: true,
       message: 'Email sent',
-      messageId: response.status.toString(),
+      messageId: response.data.queueId || response.data.id,
       status: 'sent',
       timestamp: new Date().toISOString()
     };
@@ -115,7 +127,9 @@ export async function sendEmailMessage(
     
     // Extract error message
     let errorMessage = 'Failed to send email';
-    if (error instanceof Error) {
+    if (axios.isAxiosError(error) && error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error instanceof Error) {
       errorMessage = error.message;
     }
     
@@ -233,6 +247,117 @@ export async function sendPaymentSuccessEmail(
 }
 
 /**
+ * Send email with attachment using EmailEngine
+ * @param to Recipient email address
+ * @param subject Email subject
+ * @param message Email message HTML content
+ * @param attachments Array of attachments
+ * @param variables Optional template variables
+ */
+export async function sendEmailWithAttachment(
+  to: string,
+  subject: string,
+  message: string,
+  attachments: Array<{filename: string, content: string, contentType: string}>,
+  variables?: Record<string, string>
+): Promise<EmailApiResponse> {
+  try {
+    // Validate email format
+    if (!isValidEmail(to)) {
+      throw new Error('Invalid email address format');
+    }
+    
+    // Prepare EmailEngine submission data
+    const emailData = {
+      account: SMTP_ACCOUNT,
+      from: {
+        name: EMAIL_FROM_NAME,
+        address: EMAIL_FROM
+      },
+      to: [
+        {
+          address: to
+        }
+      ],
+      subject: subject,
+      html: message,
+      attachments: attachments.map(attachment => ({
+        filename: attachment.filename,
+        content: attachment.content,
+        contentType: attachment.contentType
+      })),
+      headers: {
+        'X-Tracking-ID': variables?.orderId || `track-${Date.now()}`,
+        'X-Template-Name': variables?.templateName || 'custom_email_with_attachment'
+      }
+    };
+    
+    console.log('Sending email with attachment to:', to);
+    
+    // Send email using EmailEngine API
+    const response = await emailEngineClient.post('/v1/submit', emailData);
+    
+    console.log('Email with attachment sent successfully:', response.data);
+    
+    // Log activity
+    try {
+      await logEmailActivity({
+        order_id: variables?.orderId || 'N/A',
+        template_name: variables?.templateName || 'custom_email_with_attachment',
+        recipient: to,
+        status: 'sent',
+        message_content: message,
+        timestamp: new Date().toISOString(),
+        subject
+      });
+    } catch (logError) {
+      console.warn('Failed to log email activity:', logError);
+    }
+    
+    // Return success response
+    return {
+      success: true,
+      message: 'Email with attachment sent',
+      messageId: response.data.queueId || response.data.id,
+      status: 'sent',
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error sending email with attachment:', error);
+    
+    // Extract error message
+    let errorMessage = 'Failed to send email with attachment';
+    if (axios.isAxiosError(error) && error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    
+    // Log the failure
+    try {
+      await logEmailActivity({
+        order_id: variables?.orderId || 'N/A',
+        template_name: variables?.templateName || 'custom_email_with_attachment',
+        recipient: to,
+        status: 'failed',
+        message_content: message,
+        timestamp: new Date().toISOString(),
+        subject
+      });
+    } catch (logError) {
+      console.warn('Failed to log email activity:', logError);
+    }
+    
+    return {
+      success: false,
+      message: errorMessage,
+      status: 'failed',
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
  * Log email activity to PocketBase or local storage
  * @param activity Email activity to log
  */
@@ -287,23 +412,31 @@ export async function checkEmailConnection(): Promise<{
   message?: string;
 }> {
   try {
-    // Verify EmailJS configuration
-    if (!EMAIL_SERVICE_ID || !EMAIL_TEMPLATE_ID || !EMAIL_PUBLIC_KEY) {
+    // Verify EmailEngine configuration
+    if (!EMAILENGINE_URL || !EMAILENGINE_API_KEY) {
       return {
         connected: false,
         status: 'unconfigured',
-        message: 'EmailJS configuration is incomplete. Please check your environment variables.'
+        message: 'EmailEngine configuration is incomplete. Please check your environment variables.'
       };
     }
     
-    // Initialize EmailJS
-    initEmailJs();
+    // Check connection by requesting account info
+    const response = await emailEngineClient.get(`/v1/account/${SMTP_ACCOUNT}`);
     
-    return {
-      connected: true,
-      status: 'configured',
-      message: 'EmailJS is configured and ready to use'
-    };
+    if (response.status === 200) {
+      return {
+        connected: true,
+        status: 'configured',
+        message: 'EmailEngine is configured and ready to use'
+      };
+    } else {
+      return {
+        connected: false,
+        status: 'error',
+        message: 'Failed to connect to EmailEngine'
+      };
+    }
   } catch (error) {
     console.error('Error checking email connection:', error);
     return {
