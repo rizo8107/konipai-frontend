@@ -26,6 +26,37 @@ function getPocketBaseUrl() {
 // Initialize PocketBase with the URL from environment variables
 export const pb = new PocketBase(getPocketBaseUrl());
 
+// PocketBase Service class for components to use
+export class PocketBaseService {
+  private static instance: PocketBase = pb;
+  
+  static getInstance(): PocketBase {
+    return this.instance;
+  }
+  
+  static async submitFeedback(data: any): Promise<any> {
+    try {
+      await ensureAdminAuth();
+      return await pb.collection('feedback').create(data);
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      throw error;
+    }
+  }
+  
+  static async getFeedback(limit = 50): Promise<any> {
+    try {
+      await ensureAdminAuth();
+      return await pb.collection('feedback').getList(1, limit, {
+        sort: '-created',
+      });
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+      throw error;
+    }
+  }
+}
+
 // Add a timeout to PocketBase requests
 const AUTH_TIMEOUT = 10000; // 10 seconds
 const MAX_RETRIES = 3;
