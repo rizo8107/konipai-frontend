@@ -33,7 +33,7 @@ import {
   sendCustomWhatsAppMessage,
   sendWhatsAppTemplate
 } from '@/lib/whatsapp';
-import { sendWhatsAppTemplateFetch } from '@/lib/whatsapp-client';
+import { sendWhatsAppTemplateFetch, sendWhatsAppMessageFetch } from '@/lib/whatsapp-client';
 import { MessageSquare, Send, AlertCircle, Eye, Smartphone, Info, Wifi, WifiOff, Image, FileVideo, FileText, Upload } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
@@ -624,22 +624,8 @@ export function SendWhatsAppMessage({ order, onMessageSent }: SendWhatsAppMessag
           }
         }
       } else {
-        // If no template is selected, send a custom message using the template method
-        // This works with the curl WhatsApp Web API implementation
-        const components = [
-          {
-            type: "body",
-            parameters: [
-              {
-                type: "text",
-                text: customMessage
-              }
-            ]
-          }
-        ];
-        
-        // Use the template method with a special template name for custom messages
-        response = await sendWhatsAppTemplateFetch(customerPhone, "order_delayed - festival", components);
+        // For custom messages, use the direct message API instead of template API
+        response = await sendWhatsAppMessageFetch(customerPhone, customMessage);
       }
 
       if (response && response.success) {
