@@ -1,9 +1,18 @@
 import axios, { AxiosResponse } from 'axios';
 import { Order, OrderItem, Product, User } from '@/types/schema';
 import { createCorsProxyUrl, isProduction } from './cors-proxy';
+import { getApiUrl, fetchFallbackEnvironment } from './fallback-env';
 
-// Email API URL using the proxy configured in vite.config.js
-const EMAIL_API_URL = isProduction() ? '/email-api' : 'https://backend-server.7za6uc.easypanel.host/email-api';
+// Default Email API URL (will be overridden by fallback server if available)
+const DEFAULT_EMAIL_API_URL = 'https://backend-server.7za6uc.easypanel.host/email-api';
+
+/**
+ * Gets the Email API URL from the fallback environment or falls back to default
+ * @returns The Email API URL to use
+ */
+export function getEmailApiUrl(): string {
+  return getApiUrl('email', DEFAULT_EMAIL_API_URL);
+}
 
 /**
  * Gets the Email API endpoint URL with CORS handling
@@ -11,7 +20,8 @@ const EMAIL_API_URL = isProduction() ? '/email-api' : 'https://backend-server.7z
  * @returns The full URL with CORS handling
  */
 export function getEmailApiEndpoint(endpoint: string): string {
-  return createCorsProxyUrl(EMAIL_API_URL, endpoint);
+  const apiUrl = getEmailApiUrl();
+  return createCorsProxyUrl(apiUrl, endpoint);
 }
 
 // Interface for Email message activity logging
@@ -557,7 +567,7 @@ export async function sendReorderReminderEmail(
  */
 export async function logEmailActivity(activity: EmailActivity): Promise<void> {
   try {
-    await axios.post(`${EMAIL_API_URL}/log-activity`, activity);
+    await axios.post(getEmailApiEndpoint('/log-activity'), activity);
     console.log('Email activity logged:', activity);
   } catch (error) {
     console.error('Error logging email activity:', error);
