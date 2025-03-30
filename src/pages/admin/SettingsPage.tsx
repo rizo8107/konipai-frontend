@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -11,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import { EmailSender } from "@/components/common/EmailSender";
 
 const generalFormSchema = z.object({
   storeName: z.string().min(2, {
@@ -105,13 +105,13 @@ const SettingsPage = () => {
         </div>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+          <TabsList className="grid w-full md:w-auto md:inline-flex grid-cols-3 md:grid-cols-none h-auto">
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="email">Email</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="general" className="space-y-4 mt-4">
+          <TabsContent value="general">
             <Card>
               <CardHeader>
                 <CardTitle>General Settings</CardTitle>
@@ -215,7 +215,7 @@ const SettingsPage = () => {
             </Card>
           </TabsContent>
           
-          <TabsContent value="notifications" className="space-y-4 mt-4">
+          <TabsContent value="profile">
             <Card>
               <CardHeader>
                 <CardTitle>Notification Settings</CardTitle>
@@ -315,75 +315,25 @@ const SettingsPage = () => {
             </Card>
           </TabsContent>
           
-          <TabsContent value="security" className="space-y-4 mt-4">
+          <TabsContent value="email">
             <Card>
               <CardHeader>
-                <CardTitle>Security Settings</CardTitle>
-                <CardDescription>Manage your account security and password.</CardDescription>
+                <CardTitle>Email Settings</CardTitle>
+                <CardDescription>
+                  Configure and test email functionality
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <Form {...securityForm}>
-                  <form onSubmit={securityForm.handleSubmit(onSecuritySubmit)} className="space-y-4">
-                    <div className="space-y-2">
-                      <h3 className="font-medium">Change Password</h3>
-                      <Separator />
-                      <div className="space-y-4 pt-2">
-                        <div className="grid gap-4">
-                          <FormField
-                            control={securityForm.control}
-                            name="currentPassword"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Current Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={securityForm.control}
-                            name="newPassword"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>New Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={securityForm.control}
-                            name="confirmPassword"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Confirm New Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        <Button type="submit">Update Password</Button>
-                      </div>
-                    </div>
-                  </form>
-                </Form>
-                
-                <div className="space-y-2 pt-4">
-                  <h3 className="font-medium">Two-Factor Authentication</h3>
-                  <Separator />
-                  <div className="flex items-center justify-between pt-2">
-                    <div>
-                      <p className="font-medium">Two-factor authentication is disabled</p>
-                      <p className="text-sm text-muted-foreground">Add an extra layer of security to your account.</p>
-                    </div>
-                    <Button variant="outline">Enable</Button>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-medium">Direct Email Testing</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Test sending emails directly from the browser using EmailJS
+                  </p>
+                  <div className="pt-4">
+                    <EmailSender 
+                      defaultSubject="Test Email from Konipai CRM" 
+                      defaultMessage="<h1>Hello from Konipai CRM!</h1><p>This is a test email sent directly from the browser using EmailJS.</p>" 
+                    />
                   </div>
                 </div>
               </CardContent>

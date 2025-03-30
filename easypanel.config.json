@@ -32,7 +32,11 @@
     "VITE_CORS_ORIGIN": "*",
     "VITE_PROXY_DEBUG": "true",
     "VITE_APP_DOMAIN": "crm-frontend.7za6uc.easypanel.host",
-    "VITE_BASE_URL": "https://crm-frontend.7za6uc.easypanel.host"
+    "VITE_BASE_URL": "https://crm-frontend.7za6uc.easypanel.host",
+    "VITE_EMAILJS_SERVICE_ID": "service_id_here",
+    "VITE_EMAILJS_TEMPLATE_ID": "template_id_here",
+    "VITE_EMAILJS_PUBLIC_KEY": "public_key_here",
+    "VITE_EMAIL_FROM": "support@konipai.in"
   },
   "healthCheck": {
     "path": "/",
