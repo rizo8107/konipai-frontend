@@ -30,7 +30,15 @@ const emailApiProxy = createProxyMiddleware({
   target: DEFAULT_EMAIL_API_URL,
   changeOrigin: true,
   pathRewrite: { '^/email-api': '' },
-  secure: true,
+  secure: false,
+  onProxyReq: (proxyReq, req, res) => {
+    proxyReq.setHeader('Origin', DEFAULT_EMAIL_API_URL);
+  },
+  onProxyRes: (proxyRes, req, res) => {
+    proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+    proxyRes.headers['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE';
+    proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+  },
 });
 
 const whatsappApiProxy = createProxyMiddleware({

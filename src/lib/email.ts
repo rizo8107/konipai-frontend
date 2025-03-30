@@ -1,8 +1,18 @@
 import axios, { AxiosResponse } from 'axios';
 import { Order, OrderItem, Product, User } from '@/types/schema';
+import { createCorsProxyUrl, isProduction } from './cors-proxy';
 
 // Email API URL using the proxy configured in vite.config.js
-const EMAIL_API_URL = '/email-api';
+const EMAIL_API_URL = isProduction() ? '/email-api' : 'https://backend-server.7za6uc.easypanel.host/email-api';
+
+/**
+ * Gets the Email API endpoint URL with CORS handling
+ * @param endpoint The API endpoint (e.g., /status)
+ * @returns The full URL with CORS handling
+ */
+export function getEmailApiEndpoint(endpoint: string): string {
+  return createCorsProxyUrl(EMAIL_API_URL, endpoint);
+}
 
 // Interface for Email message activity logging
 export interface EmailActivity {
@@ -80,9 +90,12 @@ export async function sendEmailMessage(
       data.variables = variables;
     }
     
-    // Make the API request through the proxy configured in vite.config.js
-    console.log('Sending email to:', to);
-    const response = await axios.post(`${EMAIL_API_URL}/send-email`, data);
+    // Get the CORS-friendly URL for the endpoint
+    const endpoint = getEmailApiEndpoint('/send-email');
+    
+    // Make the API request through the proxy
+    console.log('Sending email to:', to, 'via:', endpoint);
+    const response = await axios.post(endpoint, data);
     console.log('Email API response:', response.data);
     
     // Return a standardized response
@@ -153,9 +166,12 @@ export async function sendEmailWithAttachment(
       data.variables = variables;
     }
     
-    // Make the API request through the proxy configured in vite.config.js
-    console.log('Sending email with attachment to:', to);
-    const response = await axios.post(`${EMAIL_API_URL}/send-email-with-attachment`, data);
+    // Get the CORS-friendly URL for the endpoint
+    const endpoint = getEmailApiEndpoint('/send-email-with-attachment');
+    
+    // Make the API request through the proxy
+    console.log('Sending email with attachment to:', to, 'via:', endpoint);
+    const response = await axios.post(endpoint, data);
     console.log('Email API response:', response.data);
     
     // Return a standardized response
@@ -567,7 +583,11 @@ export async function checkEmailConnection(): Promise<{
   message?: string;
 }> {
   try {
-    const response = await axios.get(`${EMAIL_API_URL}/status`);
+    // Use the CORS-friendly URL for the status endpoint
+    const statusUrl = getEmailApiEndpoint('/status');
+    console.log('Checking email connection at:', statusUrl);
+    
+    const response = await axios.get(statusUrl);
     return {
       connected: response.data.connected || false,
       status: response.data.status || 'unknown',
