@@ -3,9 +3,11 @@ import { Order, OrderItem, Product, User } from '@/types/schema';
 import { 
   checkWhatsAppStatus as checkWhatsAppStatusDirect, 
   sendWhatsAppMessage as sendWhatsAppMessageDirect, 
-  sendWhatsAppTemplate as sendWhatsAppTemplateDirect 
+  sendWhatsAppTemplate as sendWhatsAppTemplateDirect,
+  sendWhatsAppTemplateFetch
 } from './whatsapp-client';
 import { createCorsProxyUrl, isProduction } from './cors-proxy';
+import { prepareTemplateComponents } from './whatsapp-template-manager.js';
 
 /**
  * Gets the WhatsApp API URL from environment or direct API URL
@@ -861,58 +863,82 @@ export async function sendOutForDelivery(
 }
 
 /**
- * Send order delivered notification via WhatsApp
- * @param order - The order object
+ * Send an order delivered notification
+ * @param order - The order data
  * @param customerPhone - Customer's phone number
- * @param feedbackLink - Link for customer feedback
+ * @param feedbackLink - Link for order feedback
+ * @returns Promise with the API response
  */
 export async function sendOrderDelivered(
   order: Order,
   customerPhone: string,
-  feedbackLink: string
+  feedbackLink: string = ''
 ): Promise<WhatsAppApiResponse> {
   try {
-    const formattedPhone = formatPhoneNumber(customerPhone);
-    
-    const message = `✅ Yay {{1}}, your Konipai order (#{{2}}) was delivered!\n\nWe hope you love it ❤️ Let us know how your experience was: {{3}}\n\nHappy unboxing! 🎁`;
-    
-    const variables = {
-      '1': order.customer_name,
-      '2': order.id,
-      '3': feedbackLink
-    };
-    
-    const response = await sendWhatsAppMessage(formattedPhone, message, variables);
-    
-    // Log the activity
-    await logWhatsAppActivity({
-      order_id: order.id,
-      template_name: WhatsAppTemplate.ORDER_DELIVERED,
-      recipient: formattedPhone,
-      status: 'sent',
-      message_content: JSON.stringify({ message, variables }),
-      timestamp: new Date().toISOString()
-    });
-    
-    return response;
-  } catch (error) {
-    console.error('Error sending order delivered notification:', error);
-    
-    // Log the failed activity
-    try {
-      await logWhatsAppActivity({
-        order_id: order.id,
-        template_name: WhatsAppTemplate.ORDER_DELIVERED,
-        recipient: formatPhoneNumber(customerPhone),
-        status: 'failed',
-        message_content: JSON.stringify({ error: (error as Error).message }),
-        timestamp: new Date().toISOString()
-      });
-    } catch (logError) {
-      console.error('Error logging WhatsApp activity:', logError);
+    // Validate required parameters
+    if (!order) {
+      throw new Error('Order is required');
     }
     
-    throw error;
+    if (!customerPhone) {
+      throw new Error('Customer phone number is required');
+    }
+    
+    // Format phone number
+    const formattedPhone = formatPhoneNumber(customerPhone);
+    
+    // Set default feedback link if not provided
+    const finalFeedbackLink = feedbackLink || 'https://crm-server.7za6uc.easypanel.host/feedback';
+    
+    // Use sendWhatsAppTemplate with correct components for the feedback link
+    const components = [
+      {
+        type: 'body',
+        parameters: [
+          {
+            type: 'text',
+            text: order.customer_name || 'Customer'
+          },
+          {
+            type: 'text',
+            text: order.id
+          },
+          {
+            type: 'text',
+            text: finalFeedbackLink
+          }
+        ]
+      }
+    ];
+    
+    console.log('Sending order delivered notification...');
+    console.log('Customer:', order.customer_name);
+    console.log('Order ID:', order.id);
+    console.log('Feedback link:', finalFeedbackLink);
+    
+    // Use direct client to send template message
+    const response = await sendWhatsAppTemplateDirect(
+      formattedPhone,
+      WhatsAppTemplate.ORDER_DELIVERED,
+      components
+    );
+    
+    // Return standardized response
+    return {
+      success: response.success,
+      message: response.message || 'Order delivered notification sent',
+      messageId: response.messageId || `order-delivered-${Date.now()}`,
+      status: response.status || 'sent',
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error sending order delivered notification:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to send order delivered notification',
+      status: 'failed',
+      timestamp: new Date().toISOString()
+    };
   }
 }
 
@@ -1263,5 +1289,89 @@ export async function checkWhatsAppConnection(): Promise<{
           : 'Unable to connect to WhatsApp API'
       };
     }
+  }
+}
+
+/**
+ * Send a WhatsApp template
+ * @param to - Recipient phone number 
+ * @param templateName - Template name to use
+ * @param order - Order data for variables
+ * @param additionalInfo - Additional information for template 
+ * @returns Promise with the API response
+ */
+export async function sendWhatsAppTemplate(
+  to: string,
+  templateName: string,
+  order: any,
+  additionalInfo?: string
+): Promise<WhatsAppApiResponse> {
+  try {
+    const formattedPhone = formatPhoneNumber(to);
+    
+    // Generate feedback link if needed
+    let feedbackLink = '';
+    if (templateName === WhatsAppTemplate.ORDER_DELIVERED) {
+      const orderId = order.id || '';
+      feedbackLink = `https://crm-neyform.7za6uc.easypanel.host/form/FRpQ0g11?id=${orderId}`;
+    }
+    
+    // Create additional variables object
+    const additionalVariables: Record<string, string> = {};
+    if (additionalInfo) {
+      additionalVariables.additionalInfo = additionalInfo;
+    }
+    
+    // Prepare components with variables
+    const components = prepareTemplateComponents(order, feedbackLink, additionalVariables);
+    
+    console.log(`Sending WhatsApp template to ${formattedPhone} using template: ${templateName}`);
+    
+    // Try using the fetch-based implementation first for better CORS handling
+    try {
+      const response = await sendWhatsAppTemplateFetch(formattedPhone, templateName, components);
+      return response;
+    } catch (fetchError) {
+      console.log('Fetch implementation failed, falling back to axios:', fetchError);
+      // Fall back to the regular axios implementation
+      return await sendWhatsAppTemplateDirect(formattedPhone, templateName, components);
+    }
+  } catch (error) {
+    console.error('Error sending WhatsApp template:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to send WhatsApp template'
+    };
+  }
+}
+
+/**
+ * Send a custom WhatsApp message
+ * Used for templates or direct messages that aren't predefined in the app
+ * @param to - Recipient phone number
+ * @param message - Custom message content 
+ * @returns Promise with the API response
+ */
+export async function sendCustomWhatsAppMessage(
+  to: string,
+  message: string
+): Promise<WhatsAppApiResponse> {
+  try {
+    const formattedPhone = formatPhoneNumber(to);
+    
+    console.log(`Sending custom WhatsApp message to ${formattedPhone}`);
+    
+    // Use direct messaging for custom content
+    const response = await sendWhatsAppMessageDirect(formattedPhone, message);
+    
+    console.log('WhatsApp custom message response:', response);
+    
+    return response;
+  } catch (error) {
+    console.error('Error sending custom WhatsApp message:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to send custom WhatsApp message'
+    };
   }
 }

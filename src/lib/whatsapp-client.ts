@@ -22,7 +22,27 @@ const whatsappClient = axios.create({
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+    'Access-Control-Allow-Origin': '*',
+    'Origin': 'https://crm-frontend.7za6uc.easypanel.host'
   },
+  withCredentials: false
+});
+
+// Add interceptor to handle CORS issues
+whatsappClient.interceptors.request.use(function (config) {
+  // Set mode explicitly for fetch requests
+  if (!config.url?.startsWith('http')) {
+    // If it's a relative URL, make it absolute
+    config.url = `${getWhatsAppApiUrl()}${config.url?.startsWith('/') ? config.url : '/' + config.url}`;
+  }
+  
+  console.log('Making request to:', config.url);
+  
+  return config;
+}, function (error) {
+  return Promise.reject(error);
 });
 
 // Interfaces for API responses
@@ -125,8 +145,57 @@ export async function sendWhatsAppTemplate(
   }
 }
 
+/**
+ * Send a WhatsApp template using direct fetch API with custom headers
+ * This is an alternative implementation that uses fetch instead of axios
+ * to handle CORS issues better in some environments
+ */
+export async function sendWhatsAppTemplateFetch(
+  number: string,
+  templateName: string,
+  components: any[] = []
+): Promise<WhatsAppApiResponse> {
+  try {
+    console.log(`Sending WhatsApp template ${templateName} to ${number} via fetch API`);
+    
+    // Format phone number (ensure it has country code)
+    if (!number.startsWith('+') && !number.startsWith('91')) {
+      number = '91' + number;
+    }
+    
+    const apiUrl = `${getWhatsAppApiUrl()}/send-template`;
+    console.log(`Making fetch request to: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Origin': 'https://crm-frontend.7za6uc.easypanel.host'
+      },
+      mode: 'cors',
+      body: JSON.stringify({
+        number,
+        template_name: templateName,
+        components,
+      })
+    });
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error sending WhatsApp template via fetch:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to send WhatsApp template',
+    };
+  }
+}
+
 export default {
   checkWhatsAppStatus,
   sendWhatsAppMessage,
   sendWhatsAppTemplate,
+  sendWhatsAppTemplateFetch
 }; 
