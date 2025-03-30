@@ -19,6 +19,7 @@ const EmailActivitiesPage = lazy(() => import("./pages/admin/EmailActivitiesPage
 const EmailTemplatesPage = lazy(() => import("./pages/admin/EmailTemplatesPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const EmailTest = lazy(() => import("./components/email/EmailTest"));
 
 // Fallback loading component
 const PageLoader = () => (
@@ -103,6 +104,14 @@ const App = () => {
                 <Route path="/admin/whatsapp-templates" element={<WhatsAppTemplatesPage />} />
                 <Route path="/admin/email" element={<EmailActivitiesPage />} />
                 <Route path="/admin/email-templates" element={<EmailTemplatesPage />} />
+                
+                {/* Test routes */}
+                <Route path="/test/email" element={
+                  <div className="container mx-auto py-8">
+                    <h1 className="text-2xl font-bold mb-6">Email Service Test</h1>
+                    <EmailTest />
+                  </div>
+                } />
                 
                 {/* Catch-all route */}
                 <Route path="*" element={<NotFound />} />
