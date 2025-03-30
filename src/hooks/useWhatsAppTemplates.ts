@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { pb } from '@/lib/pocketbase';
 import { WhatsAppTemplate } from '@/lib/whatsapp';
 import { toast } from 'sonner';
+import { fetchUniqueTemplates, removeDuplicateTemplates, createOrUpdateTemplate, ensureOrderDeliveredTemplateHasFeedbackLink } from '@/lib/whatsapp-template-manager.ts';
 
 export interface Template {
   id: string;
@@ -28,17 +29,24 @@ export function useWhatsAppTemplates() {
       const collections = await pb.collections.getFullList();
       const templateCollectionExists = collections.some(c => c.name === 'whatsapp_templates');
       
-      // If collection doesn't exist, create default templates from enum
+      // If collection doesn't exist, create default templates
       if (!templateCollectionExists) {
         await createDefaultTemplates();
         return;
       }
       
-      const records = await pb.collection('whatsapp_templates').getFullList({
-        sort: 'name',
-      });
+      // First attempt to remove any duplicate templates
+      const removedCount = await removeDuplicateTemplates();
+      if (removedCount > 0) {
+        console.log(`Removed ${removedCount} duplicate templates`);
+      }
       
-      setTemplates(records as unknown as Template[]);
+      // Fix ORDER_DELIVERED template to ensure it has a feedbackLink variable
+      await ensureOrderDeliveredTemplateHasFeedbackLink();
+      
+      // Get deduplicated templates
+      const uniqueTemplates = await fetchUniqueTemplates();
+      setTemplates(uniqueTemplates);
       setError(null);
     } catch (err) {
       console.error('Error fetching WhatsApp templates:', err);
@@ -194,7 +202,7 @@ export function useWhatsAppTemplates() {
       // Create default templates in PocketBase
       for (const template of defaultTemplates) {
         try {
-          await pb.collection('whatsapp_templates').create(template);
+          await createOrUpdateTemplate(template);
         } catch (err) {
           console.error(`Error creating template ${template.name}:`, err);
           // Continue with other templates
@@ -202,11 +210,8 @@ export function useWhatsAppTemplates() {
       }
 
       // Fetch the created templates
-      const records = await pb.collection('whatsapp_templates').getFullList({
-        sort: 'name',
-      });
-      
-      setTemplates(records as unknown as Template[]);
+      const uniqueTemplates = await fetchUniqueTemplates();
+      setTemplates(uniqueTemplates);
       toast.success('Default WhatsApp templates created');
     } catch (err) {
       console.error('Error creating default templates:', err);
@@ -229,8 +234,8 @@ export function useWhatsAppTemplates() {
 
   const createTemplate = async (templateData: Omit<Template, 'id' | 'created' | 'updated'>) => {
     try {
-      const created = await pb.collection('whatsapp_templates').create(templateData);
-      setTemplates(prev => [...prev, created as unknown as Template]);
+      const created = await createOrUpdateTemplate(templateData);
+      setTemplates(prev => [...prev.filter(t => t.name !== templateData.name), created]);
       return created;
     } catch (err) {
       console.error('Error creating template:', err);
@@ -251,14 +256,13 @@ export function useWhatsAppTemplates() {
 
   useEffect(() => {
     fetchTemplates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
     templates,
     isLoading,
     error,
-    refreshTemplates: fetchTemplates,
+    fetchTemplates,
     updateTemplate,
     createTemplate,
     deleteTemplate,
