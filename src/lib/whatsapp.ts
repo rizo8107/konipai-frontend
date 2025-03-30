@@ -5,35 +5,32 @@ import {
   sendWhatsAppMessage as sendWhatsAppMessageDirect, 
   sendWhatsAppTemplate as sendWhatsAppTemplateDirect 
 } from './whatsapp-client';
+import { createCorsProxyUrl, isProduction } from './cors-proxy';
 
 /**
  * Gets the WhatsApp API URL from environment or direct API URL
  * @returns The URL to use for WhatsApp API calls
  */
 export function getWhatsAppApiUrl(): string {
-  // Simple detection of environment
-  const isProduction = typeof window !== 'undefined' && window.location.hostname.includes('easypanel.host');
-  
-  // For production environments in Easypanel, use direct API URL
-  if (isProduction) {
-    console.log('Production environment detected, using direct WhatsApp API');
-    return 'https://backend-whatsappapi.7za6uc.easypanel.host';
-  }
-
   // Get the API URL from the environment variables
   const envUrl = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_WHATSAPP_API_URL;
   
   // Default WhatsApp API URL if environment variable is not set
   const defaultApiUrl = 'https://backend-whatsappapi.7za6uc.easypanel.host';
   
-  if (!envUrl) {
-    console.warn('VITE_WHATSAPP_API_URL not found in environment. Using default API URL:', defaultApiUrl);
-    return defaultApiUrl;
-  }
+  const baseUrl = envUrl || defaultApiUrl;
   
-  // Use direct URL approach
-  console.log('Using WhatsApp API URL:', envUrl);
-  return envUrl as string;
+  // Always return the base URL as we'll use createCorsProxyUrl when making requests
+  return baseUrl;
+}
+
+/**
+ * Creates a CORS-friendly URL for a WhatsApp API endpoint
+ * @param endpoint The API endpoint (e.g., /status)
+ * @returns The full URL with CORS handling
+ */
+export function getWhatsAppApiEndpoint(endpoint: string): string {
+  return createCorsProxyUrl(getWhatsAppApiUrl(), endpoint);
 }
 
 // Interface for WhatsApp message activity logging
@@ -501,9 +498,12 @@ export async function sendWhatsAppMessage(
       data.variables = variables;
     }
     
-    // Make the API request through the proxy configured in vite.config.js
-    console.log('Sending WhatsApp message to:', formattedPhone);
-    const response = await axios.post(`${getWhatsAppApiUrl()}/send-message`, data);
+    // Use CORS proxy URL
+    const endpoint = getWhatsAppApiEndpoint('/send-message');
+    console.log('Sending WhatsApp message to:', formattedPhone, 'via:', endpoint);
+    
+    // Make the API request through our CORS proxy
+    const response = await axios.post(endpoint, data);
     console.log('WhatsApp API response:', response.data);
     
     // Return a standardized response
@@ -1156,8 +1156,11 @@ export async function checkWhatsAppConnection(): Promise<{
   message?: string;
 }> {
   try {
-    // Make a request to the status endpoint
-    const response = await axios.get(`${getWhatsAppApiUrl()}/status`);
+    // Make a request to the status endpoint using the CORS proxy
+    const statusUrl = getWhatsAppApiEndpoint('/status');
+    console.log('Checking WhatsApp connection at:', statusUrl);
+    
+    const response = await axios.get(statusUrl);
     
     // Return the connection status
     return {

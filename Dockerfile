@@ -16,16 +16,25 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine AS runner
+FROM node:20-alpine AS runner
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
+
+# Copy package files and install production dependencies
+COPY package*.json ./
+RUN npm ci --production
+
+# Copy server.js file
+COPY server.js ./
 
 # Copy built files from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/dist ./dist
 
 # Expose port
 EXPOSE 80
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"] 
+# Set NODE_ENV to production
+ENV NODE_ENV=production
+
+# Start express server
+CMD ["node", "--experimental-json-modules", "server.js"] 
