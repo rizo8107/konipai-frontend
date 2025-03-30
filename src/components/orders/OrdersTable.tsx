@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Table, 
@@ -32,13 +33,12 @@ import {
   Edit, 
   AlertCircle 
 } from 'lucide-react';
-import { format, isValid } from 'date-fns';
+import { format } from 'date-fns';
 
 interface OrdersTableProps {
   orders: Order[];
   isLoading?: boolean;
   onViewOrder: (order: Order) => void;
-  onEditOrder?: (order: Order) => void;
   onUpdateStatus: (orderId: string, status: OrderStatus) => void;
 }
 
@@ -79,22 +79,10 @@ const getPaymentStatusBadge = (status: PaymentStatus) => {
   );
 };
 
-// Helper function to safely format dates
-const safeFormatDate = (dateString: string) => {
-  try {
-    const date = new Date(dateString);
-    return isValid(date) ? format(date, 'dd MMM yyyy') : 'Invalid date';
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return 'Unknown date';
-  }
-};
-
 export const OrdersTable: React.FC<OrdersTableProps> = ({ 
   orders, 
   isLoading, 
   onViewOrder, 
-  onEditOrder,
   onUpdateStatus 
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -191,7 +179,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                     ₹{order.total.toFixed(2)}
                   </TableCell>
                   <TableCell className="text-sm text-gray-500">
-                    {safeFormatDate(order.created)}
+                    {format(new Date(order.created), 'dd MMM yyyy')}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -205,12 +193,6 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                           <Eye size={14} className="mr-2" />
                           View Details
                         </DropdownMenuItem>
-                        {onEditOrder && (
-                          <DropdownMenuItem onClick={() => onEditOrder(order)}>
-                            <Edit size={14} className="mr-2" />
-                            Edit Order
-                          </DropdownMenuItem>
-                        )}
                         <DropdownMenuItem>
                           <Edit size={14} className="mr-2" />
                           Update Status

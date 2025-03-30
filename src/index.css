@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ensure fonts load correctly in all environments */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -84,20 +85,65 @@
   }
 }
 
+/* Define konipai specific colors */
+:root {
+  --konipai-50: #ebf5ff;
+  --konipai-100: #e1efff;
+  --konipai-200: #c3dfff;
+  --konipai-300: #9bc7ff;
+  --konipai-400: #74a6ff;
+  --konipai-500: #4b83fd;
+  --konipai-600: #2563eb;
+  --konipai-700: #1e4fd8;
+  --konipai-800: #1e40af;
+  --konipai-900: #1e3a8a;
+  --konipai-950: #172554;
+}
+
 @layer base {
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Fix for mobile devices */
+  html, body {
+    height: 100%;
+    overflow-x: hidden;
   }
 }
 
-/* Grid pattern background */
-.bg-grid-pattern {
-  background-image: 
-    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-  background-size: 20px 20px;
+/* Fix for third-party component styles */
+.bg-konipai-600 {
+  background-color: var(--konipai-600);
+}
+
+.hover\:bg-konipai-700:hover {
+  background-color: var(--konipai-700);
+}
+
+.text-konipai-600 {
+  color: var(--konipai-600);
+}
+
+.hover\:text-konipai-800:hover {
+  color: var(--konipai-800);
+}
+
+/* Ensure modals and dialogs work properly */
+#portal-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+#portal-root > * {
+  pointer-events: auto;
 }
