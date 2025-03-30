@@ -54,30 +54,44 @@ export interface Coupon extends BaseRecord {
 
 export interface Order extends BaseRecord {
   id: string;
-  user: string[];
-  status: 'pending' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled';
-  products: string;
-  totalAmount: number;
-  subtotal: number;
-  total: number;
-  payment_status: 'pending' | 'paid' | 'failed';
+  created: string;
+  updated: string;
   customer_name: string;
-  customer_email: string;
   customer_phone: string;
-  notes?: string;
-  razorpay_order_id?: string;
-  razorpay_payment_id?: string;
-  coupon_code?: string;
-  coupon_id?: string;
-  discount_amount?: number;
-  shipping_address_text?: string;
-  tracking_link?: string;
-  shipping_carrier?: string;
-  refund_amount?: number;
-  expand?: {
-    user?: User[];
-    coupon_id?: Coupon;
+  customer_email: string;
+  total: number;
+  status: string;
+  products: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    image?: string;
+    description?: string;
+  }>;
+  shipping_address: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
   };
+  shipping_address_text: string;
+  shipping_fee: number;
+  tax: number;
+  discount: number;
+  payment_method: string;
+  payment_id?: string;
+  payment_status: 'pending' | 'paid' | 'failed';
+  notes?: string;
+  items?: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }>;
+  user_name: string;
+  user_email: string;
 }
 
 export interface OrderItem extends BaseRecord {
@@ -144,23 +158,40 @@ export type CreateProductData = {
 };
 
 export type CreateOrderData = {
-  user: string[];
-  status: 'pending' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled';
-  products: string;
-  totalAmount: number;
-  subtotal: number;
-  total: number;
-  payment_status: 'pending' | 'paid' | 'failed';
   customer_name: string;
-  customer_email: string;
   customer_phone: string;
-  notes?: string;
-  razorpay_order_id?: string;
-  razorpay_payment_id?: string;
-  coupon_code?: string;
-  coupon_id?: string;
-  discount_amount?: number;
-  shipping_address_text?: string;
+  customer_email: string;
+  total: number;
+  status: string;
+  products: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    image?: string;
+    description?: string;
+  }>;
+  shipping_address: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+  };
+  shipping_address_text: string;
+  shipping_fee: number;
+  tax: number;
+  discount: number;
+  payment_method: string;
+  payment_id?: string;
+  items?: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }>;
+  user_name: string;
+  user_email: string;
 };
 
 export type CreateRazorpayOrderData = {
@@ -177,8 +208,9 @@ export type CreateRazorpayOrderData = {
 export type UpdateProductData = Partial<Omit<Product, keyof BaseRecord>>;
 
 export type UpdateOrderData = Partial<CreateOrderData> & {
-  status?: 'pending' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled';
-  payment_status?: 'pending' | 'paid' | 'failed';
+  status?: string;
+  payment_method?: string;
+  payment_id?: string;
   tracking_link?: string;
   shipping_carrier?: string;
   refund_amount?: number;
