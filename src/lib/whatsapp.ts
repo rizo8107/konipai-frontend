@@ -4,7 +4,8 @@ import {
   checkWhatsAppStatus as checkWhatsAppStatusDirect, 
   sendWhatsAppMessage as sendWhatsAppMessageDirect, 
   sendWhatsAppTemplate as sendWhatsAppTemplateDirect,
-  sendWhatsAppTemplateFetch
+  sendWhatsAppTemplateFetch,
+  sendWhatsAppMessageFetch
 } from './whatsapp-client';
 import { createCorsProxyUrl, isProduction } from './cors-proxy';
 import { prepareTemplateComponents } from './whatsapp-template-manager.js';
@@ -86,44 +87,18 @@ export async function sendWhatsAppTextMessage(
   variables?: Record<string, string>
 ): Promise<WhatsAppApiResponse> {
   try {
-    // Format phone number
-    const formattedPhone = formatPhoneNumber(to);
+    console.log(`Sending WhatsApp text message to ${to}`);
     
-    // Use CORS proxy URL to avoid CORS issues
-    const endpoint = getWhatsAppApiEndpoint('/send-message');
-    console.log(`Sending WhatsApp text message to ${formattedPhone} via endpoint: ${endpoint}`);
-    
-    // Try using fetch API first for better CORS compatibility
+    // First try the dedicated fetch implementation which correctly uses /send-message endpoint
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'Origin': typeof window !== 'undefined' ? window.location.origin : 'https://crm-frontend.7za6uc.easypanel.host'
-        },
-        mode: 'cors',
-        body: JSON.stringify({
-          number: formattedPhone,
-          message,
-          ...(variables && { variables })
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`WhatsApp API responded with status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data;
+      return await sendWhatsAppMessageFetch(to, message, variables);
     } catch (fetchError) {
-      console.log('Fetch implementation failed, falling back to direct client:', fetchError);
-      // Fall back to the direct client if fetch fails
+      console.error('Fetch implementation failed, trying fallback:', fetchError);
+      // Fall back to direct client as last resort
       return await sendWhatsAppMessageDirect(to, message, variables);
     }
   } catch (error) {
-    console.error('Error sending WhatsApp text message:', error);
+    console.error('All methods failed when sending WhatsApp text message:', error);
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to send WhatsApp text message'
