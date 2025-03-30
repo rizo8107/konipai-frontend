@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies with clean npm install
-RUN npm ci
+# Install dependencies with npm install instead of npm ci
+RUN npm install
 
 # Copy rest of the application
 COPY . .
@@ -22,7 +22,7 @@ WORKDIR /app
 
 # Copy package files and install production dependencies
 COPY package*.json ./
-RUN npm ci --production
+RUN npm install --omit=dev
 
 # Copy server.js file
 COPY server.js ./
