@@ -9,17 +9,20 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-# Copy source code only (not node_modules)
-COPY tsconfig.json ./
+# Copy source code and tsconfig files
+COPY tsconfig*.json ./
 COPY src ./src
 COPY public ./public
 COPY index.html ./
 COPY vite.config.ts ./
 COPY server.js ./
 
+# Display TypeScript config files for debugging
+RUN ls -la *.json
+
 # Check TypeScript compile errors in more detail
 RUN echo "Checking TypeScript errors..." && \
-    npx tsc --noEmit --pretty --listFiles || exit 1
+    npx tsc --noEmit --pretty || exit 1
 
 # Full build stage
 FROM node:20-alpine AS builder
