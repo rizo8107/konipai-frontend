@@ -16,6 +16,15 @@ function getWhatsAppApiUrl(): string {
   return apiUrl;
 }
 
+// Get fallback WhatsApp API URL
+function getFallbackWhatsAppApiUrl(): string {
+  const mainUrl = getWhatsAppApiUrl();
+  if (mainUrl.includes('7za6uc.easypanel.host')) {
+    return mainUrl.replace('7za6uc.easypanel.host', '7za6uc.easypanel.host:8080');
+  }
+  return mainUrl + ':8080';
+}
+
 // Create axios instance for WhatsApp API
 const whatsappClient = axios.create({
   baseURL: getWhatsAppApiUrl(),
@@ -30,12 +39,20 @@ const whatsappClient = axios.create({
   withCredentials: false
 });
 
-// Add interceptor to handle CORS issues
+// Track if we're using fallback URL
+let usingFallbackUrl = false;
+
+// Add interceptor to handle CORS issues and connection failures
 whatsappClient.interceptors.request.use(function (config) {
+  // If we're already using fallback and the URL doesn't have the fallback port, add it
+  if (usingFallbackUrl && !config.url?.includes(':8080')) {
+    config.baseURL = getFallbackWhatsAppApiUrl();
+  }
+  
   // Set mode explicitly for fetch requests
   if (!config.url?.startsWith('http')) {
     // If it's a relative URL, make it absolute
-    config.url = `${getWhatsAppApiUrl()}${config.url?.startsWith('/') ? config.url : '/' + config.url}`;
+    config.url = `${config.baseURL}${config.url?.startsWith('/') ? config.url : '/' + config.url}`;
   }
   
   // Get the origin from the browser if available
@@ -51,6 +68,39 @@ whatsappClient.interceptors.request.use(function (config) {
 }, function (error) {
   return Promise.reject(error);
 });
+
+// Add response interceptor to handle connection failures
+whatsappClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // If we haven't tried the fallback URL yet and we got a connection error
+    if (!usingFallbackUrl && (
+      error.code === 'ECONNREFUSED' || 
+      error.response?.status === 500 ||
+      error.response?.status === 404
+    )) {
+      console.log('Primary WhatsApp connection failed, trying fallback...');
+      console.log('Using fallback endpoint:', getFallbackWhatsAppApiUrl());
+      
+      // Switch to fallback URL
+      usingFallbackUrl = true;
+      originalRequest.baseURL = getFallbackWhatsAppApiUrl();
+      originalRequest.url = originalRequest.url?.replace(getWhatsAppApiUrl(), getFallbackWhatsAppApiUrl());
+      
+      // Retry the request with the fallback URL
+      try {
+        return await whatsappClient(originalRequest);
+      } catch (fallbackError) {
+        console.error('Fallback WhatsApp check also failed:', fallbackError);
+        return Promise.reject(fallbackError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 // Interfaces for API responses
 export interface WhatsAppApiResponse {
@@ -200,9 +250,69 @@ export async function sendWhatsAppTemplateFetch(
   }
 }
 
+/**
+ * Send a WhatsApp message using direct fetch API with custom headers
+ * This is an alternative implementation that uses fetch instead of axios
+ * to handle CORS issues better in some environments
+ */
+export async function sendWhatsAppMessageFetch(
+  number: string,
+  message: string,
+  variables?: Record<string, string>
+): Promise<WhatsAppApiResponse> {
+  try {
+    console.log(`Sending WhatsApp message to ${number} via fetch API`);
+    
+    // Format phone number (ensure it has country code)
+    if (!number.startsWith('+') && !number.startsWith('91')) {
+      number = '91' + number;
+    }
+    
+    const apiUrl = `${getWhatsAppApiUrl()}/send-message`;
+    console.log(`Making fetch request to: ${apiUrl}`);
+    
+    // Get the origin from the browser if available
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://crm-frontend.7za6uc.easypanel.host';
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Origin': origin,
+        'Referer': origin
+      },
+      mode: 'cors',
+      cache: 'no-cache',
+      credentials: 'omit',
+      body: JSON.stringify({
+        number,
+        message,
+        ...(variables && { variables })
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`WhatsApp API responded with status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('WhatsApp message API response:', data);
+    return data;
+  } catch (error) {
+    console.error('Error sending WhatsApp message via fetch:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to send WhatsApp message',
+    };
+  }
+}
+
 export default {
   checkWhatsAppStatus,
   sendWhatsAppMessage,
   sendWhatsAppTemplate,
-  sendWhatsAppTemplateFetch
+  sendWhatsAppTemplateFetch,
+  sendWhatsAppMessageFetch
 }; 

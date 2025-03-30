@@ -625,7 +625,7 @@ export function SendWhatsAppMessage({ order, onMessageSent }: SendWhatsAppMessag
         }
       } else {
         // For custom messages, use the direct message API instead of template API
-        response = await whatsappClient.sendWhatsAppMessageFetch(customerPhone, customMessage);
+        response = await sendWhatsAppTextMessage(customerPhone, customMessage);
       }
 
       if (response && response.success) {

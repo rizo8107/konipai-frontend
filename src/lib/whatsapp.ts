@@ -414,8 +414,21 @@ export async function sendWhatsAppVideoMessage(
     
     // Extract error message from the response if available
     let errorMessage = 'Failed to send WhatsApp video message';
-    if (axios.isAxiosError(error) && error.response?.data?.message) {
-      errorMessage = error.response.data.message;
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 500) {
+        errorMessage = 'WhatsApp API server error. The video URL may not be accessible to the API.';
+      }
     } else if (error instanceof Error) {
       errorMessage = error.message;
     }
@@ -515,8 +528,21 @@ export async function sendWhatsAppDocumentMessage(
     
     // Extract error message from the response if available
     let errorMessage = 'Failed to send WhatsApp document message';
-    if (axios.isAxiosError(error) && error.response?.data?.message) {
-      errorMessage = error.response.data.message;
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 500) {
+        errorMessage = 'WhatsApp API server error. The document URL may not be accessible to the API.';
+      }
     } else if (error instanceof Error) {
       errorMessage = error.message;
     }
@@ -587,8 +613,21 @@ export async function sendWhatsAppMessage(
     
     // Extract error message from the response if available
     let errorMessage = 'Failed to send WhatsApp message';
-    if (axios.isAxiosError(error) && error.response?.data?.message) {
-      errorMessage = error.response.data.message;
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 500) {
+        errorMessage = 'WhatsApp API server error. The message may not be accessible to the API.';
+      }
     } else if (error instanceof Error) {
       errorMessage = error.message;
     }
