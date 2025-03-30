@@ -43,7 +43,7 @@ export const frontendConfig = {
   api: {
     baseUrl: getEnv('VITE_API_URL', 'https://backend-server.7za6uc.easypanel.host/api'),
     emailUrl: getEnv('VITE_EMAIL_API_URL', 'https://backend-server.7za6uc.easypanel.host/email-api'),
-    whatsappUrl: getEnv('VITE_WHATSAPP_API_URL', 'https://backend-whatsappapi.7za6uc.easypanel.host')
+    whatsappUrl: getEnv('VITE_WHATSAPP_API_URL', '/whatsapp-api')
   },
   
   // PocketBase configuration
