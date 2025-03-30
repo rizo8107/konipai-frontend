@@ -11,6 +11,17 @@ A modern CRM application built with React, TypeScript, and Vite.
 - Payment tracking
 - Responsive design for mobile and desktop
 
+## Tech Stack
+
+- React 18
+- TypeScript
+- Vite
+- TailwindCSS
+- Radix UI / Shadcn UI Components
+- React Router
+- React Query
+- PocketBase
+
 ## Prerequisites
 
 - Node.js 16.x or higher
@@ -34,6 +45,9 @@ npm install
 VITE_POCKETBASE_URL=http://localhost:8090
 POCKETBASE_ADMIN_EMAIL=your-admin-email
 POCKETBASE_ADMIN_PASSWORD=your-admin-password
+VITE_API_URL=http://localhost:3000/api
+VITE_EMAIL_API_URL=http://localhost:3000/email-api
+VITE_WHATSAPP_API_URL=https://backend-whatsappapi.7za6uc.easypanel.host
 ```
 
 ## Development
@@ -80,17 +94,6 @@ npm start
 
 - Added `lovable-tagger` for component tagging in development
 - Added `dotenv` for environment variable handling
-
-## Technology Stack
-
-- React 18
-- TypeScript
-- Vite
-- TailwindCSS
-- Radix UI
-- React Query
-- PocketBase
-- React Router
 
 ## Docker
 

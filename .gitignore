@@ -3,9 +3,13 @@ node_modules
 .pnp
 .pnp.js
 
+# Testing
+/coverage
+
 # Build output
 dist
 dist-ssr
+/build
 *.local
 
 # Environment variables
@@ -33,4 +37,9 @@ lerna-debug.log*
 *.ntvs*
 *.njsproj
 *.sln
-*.sw? 
+*.sw?
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
