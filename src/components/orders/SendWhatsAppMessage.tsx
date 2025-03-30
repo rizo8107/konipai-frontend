@@ -624,7 +624,7 @@ export function SendWhatsAppMessage({ order, onMessageSent }: SendWhatsAppMessag
         }
       } else {
         // If no template is selected, send a custom message
-        response = await sendCustomWhatsAppMessage(customerPhone, customMessage);
+        response = await sendWhatsAppTextMessage(customerPhone, customMessage);
       }
 
       if (response && response.success) {

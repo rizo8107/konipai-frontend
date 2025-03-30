@@ -38,6 +38,13 @@ whatsappClient.interceptors.request.use(function (config) {
     config.url = `${getWhatsAppApiUrl()}${config.url?.startsWith('/') ? config.url : '/' + config.url}`;
   }
   
+  // Get the origin from the browser if available
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://crm-frontend.7za6uc.easypanel.host';
+  
+  // Set Origin header to match the real site
+  config.headers.Origin = origin;
+  config.headers.Referer = origin;
+  
   console.log('Making request to:', config.url);
   
   return config;

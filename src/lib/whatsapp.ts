@@ -85,7 +85,50 @@ export async function sendWhatsAppTextMessage(
   message: string,
   variables?: Record<string, string>
 ): Promise<WhatsAppApiResponse> {
-  return sendWhatsAppMessageDirect(to, message, variables);
+  try {
+    // Format phone number
+    const formattedPhone = formatPhoneNumber(to);
+    
+    // Use CORS proxy URL to avoid CORS issues
+    const endpoint = getWhatsAppApiEndpoint('/send-message');
+    console.log(`Sending WhatsApp text message to ${formattedPhone} via endpoint: ${endpoint}`);
+    
+    // Try using fetch API first for better CORS compatibility
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Origin': typeof window !== 'undefined' ? window.location.origin : 'https://crm-frontend.7za6uc.easypanel.host'
+        },
+        mode: 'cors',
+        body: JSON.stringify({
+          number: formattedPhone,
+          message,
+          ...(variables && { variables })
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`WhatsApp API responded with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (fetchError) {
+      console.log('Fetch implementation failed, falling back to direct client:', fetchError);
+      // Fall back to the direct client if fetch fails
+      return await sendWhatsAppMessageDirect(to, message, variables);
+    }
+  } catch (error) {
+    console.error('Error sending WhatsApp text message:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to send WhatsApp text message'
+    };
+  }
 }
 
 /**
