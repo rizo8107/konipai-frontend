@@ -227,7 +227,18 @@ export async function sendWhatsAppImageMessage(
     }, null, 2));
     
     try {
-      const response = await axios.post(`${getWhatsAppApiUrl()}/send-image-url`, data);
+      // Use CORS proxy endpoint
+      const endpoint = getWhatsAppApiEndpoint('/send-image-url');
+      console.log('Sending to endpoint:', endpoint);
+      
+      const response = await axios.post(endpoint, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: 10000
+      });
+      
       console.log('WhatsApp API response:', response.data);
       
       // Return a standardized response
@@ -503,7 +514,14 @@ export async function sendWhatsAppMessage(
     console.log('Sending WhatsApp message to:', formattedPhone, 'via:', endpoint);
     
     // Make the API request through our CORS proxy
-    const response = await axios.post(endpoint, data);
+    const response = await axios.post(endpoint, data, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      timeout: 10000
+    });
+    
     console.log('WhatsApp API response:', response.data);
     
     // Return a standardized response
@@ -549,11 +567,21 @@ export async function sendWhatsAppImage(
   try {
     const formattedPhone = formatPhoneNumber(phoneNumber);
     
-    const response = await axios.post<WhatsAppApiResponse>(`${getWhatsAppApiUrl()}/send-image-url`, {
+    // Use CORS proxy endpoint
+    const endpoint = getWhatsAppApiEndpoint('/send-image-url');
+    console.log('Sending WhatsApp image via:', endpoint);
+    
+    const response = await axios.post<WhatsAppApiResponse>(endpoint, {
       number: formattedPhone,
       imageUrl,
       caption,
       variables
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      timeout: 10000
     });
     
     console.log('WhatsApp image sent successfully:', response.data);
@@ -1160,7 +1188,18 @@ export async function checkWhatsAppConnection(): Promise<{
     const statusUrl = getWhatsAppApiEndpoint('/status');
     console.log('Checking WhatsApp connection at:', statusUrl);
     
-    const response = await axios.get(statusUrl);
+    // Add more detailed request options
+    const response = await axios.get(statusUrl, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      // Increase timeout for slower connections
+      timeout: 10000
+    });
+    
+    console.log('WhatsApp connection response:', response.data);
     
     // Return the connection status
     return {
@@ -1169,13 +1208,30 @@ export async function checkWhatsAppConnection(): Promise<{
       message: response.data.message || 'WhatsApp API is connected'
     };
   } catch (error) {
-    console.error('Error checking WhatsApp connection:', error);
+    // More detailed error logging
+    if (axios.isAxiosError(error)) {
+      console.error('WhatsApp API connection error:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        }
+      });
+    } else {
+      console.error('Unknown WhatsApp connection error:', error);
+    }
     
-    // Return disconnected status
+    // Return disconnected status with more informative message
     return {
       connected: false,
       status: 'disconnected',
-      message: 'WhatsApp API is not connected'
+      message: axios.isAxiosError(error) 
+        ? `WhatsApp API connection failed: ${error.message}` 
+        : 'Unable to connect to WhatsApp API'
     };
   }
 }
