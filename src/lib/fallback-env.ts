@@ -36,11 +36,16 @@ export async function fetchFallbackEnvironment(forceRefresh = false): Promise<Fa
   }
 
   try {
-    console.log('Fetching environment from fallback server...');
-    const response = await axios.get<FallbackEnvironment>(FALLBACK_SERVER_URL);
+    console.log('Fetching environment from fallback server:', FALLBACK_SERVER_URL);
+    const response = await axios.get<FallbackEnvironment>(FALLBACK_SERVER_URL, {
+      timeout: 5000, // 5 second timeout
+    });
     
     if (response.data && response.data.emailApiUrl) {
       console.log('Successfully loaded environment from fallback server');
+      console.log('API URL:', response.data.apiUrl);
+      console.log('Email API URL:', response.data.emailApiUrl);
+      console.log('WhatsApp API URL:', response.data.whatsappApiUrl);
       
       // Cache the response
       cachedFallbackEnv = response.data;

@@ -593,18 +593,57 @@ export async function checkEmailConnection(): Promise<{
   message?: string;
 }> {
   try {
-    // Use the CORS-friendly URL for the status endpoint
+    // First try a direct connection to the email-api endpoint
+    try {
+      const response = await axios.get('https://crm-server.7za6uc.easypanel.host/email-api/status');
+      console.log('Email API status from direct crm-server endpoint:', response.data);
+      
+      return {
+        connected: true,
+        status: 'connected',
+        message: 'Email API is connected directly'
+      };
+    } catch (directError) {
+      console.warn('Failed to check email directly from crm-server, trying fallback', directError);
+    }
+    
+    // Try using the fallback server to get the URL
+    try {
+      const fallbackResponse = await axios.get('https://crm-server.7za6uc.easypanel.host/');
+      if (fallbackResponse.data && fallbackResponse.data.emailApiUrl) {
+        console.log('Using emailApiUrl directly from fallback server:', fallbackResponse.data.emailApiUrl);
+        
+        // Try to connect to the email API status endpoint
+        const statusEndpoint = fallbackResponse.data.emailApiUrl + '/connection-status';
+        console.log('Checking email API status at:', statusEndpoint);
+        
+        const emailResponse = await axios.get(statusEndpoint, {
+          timeout: 8000,
+        });
+        
+        return {
+          connected: true,
+          status: emailResponse.data?.status || 'connected',
+          message: emailResponse.data?.message || 'Email API is connected through fallback URL'
+        };
+      }
+    } catch (fallbackError) {
+      console.warn('Failed to check email via fallback server URLs', fallbackError);
+    }
+    
+    // Last resort: use the proxy approach
     const statusUrl = getEmailApiEndpoint('/status');
-    console.log('Checking email connection at:', statusUrl);
+    console.log('Checking email connection via proxy at:', statusUrl);
     
     const response = await axios.get(statusUrl);
+    
     return {
-      connected: response.data.connected || false,
-      status: response.data.status || 'unknown',
-      message: response.data.message || 'Connection status checked'
+      connected: response.data?.connected || false,
+      status: response.data?.status || 'unknown',
+      message: response.data?.message || 'Connection status checked via proxy'
     };
   } catch (error) {
-    console.error('Error checking email connection:', error);
+    console.error('All email connection check methods failed:', error);
     return {
       connected: false,
       status: 'error',
