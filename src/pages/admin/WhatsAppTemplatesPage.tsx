@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Edit, Trash2, Plus, Save, X, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, Edit, Trash2, Plus, Save, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { WhatsAppTemplate } from '@/lib/whatsapp';
 import { useWhatsAppTemplates, Template } from '@/hooks/useWhatsAppTemplates';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -17,9 +17,10 @@ import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { generateTemplateContent, generateTemplateDescription } from '@/lib/gemini';
+import { FixWhatsAppTemplates } from '@/components/admin/FixWhatsAppTemplates';
 
 export default function WhatsAppTemplatesPage() {
-  const { templates, isLoading, updateTemplate, createTemplate, deleteTemplate } = useWhatsAppTemplates();
+  const { templates, isLoading, updateTemplate, createTemplate, deleteTemplate, fetchTemplates } = useWhatsAppTemplates();
   const [searchTerm, setSearchTerm] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -204,73 +205,79 @@ export default function WhatsAppTemplatesPage() {
           icon={<MessageSquare className="h-6 w-6" />}
         />
         
-        <div className="flex justify-between items-center">
-          <div className="relative w-full max-w-sm">
-            <Input
-              placeholder="Search templates..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-            <div className="absolute left-3 top-2.5 text-muted-foreground">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="relative w-full max-w-sm">
+                <Input
+                  placeholder="Search templates..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+                <div className="absolute left-3 top-2.5 text-muted-foreground">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </div>
+              </div>
+              
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" /> Create Template
+              </Button>
             </div>
+
+            {isLoading ? (
+              <p>Loading templates...</p>
+            ) : filteredTemplates.length === 0 ? (
+              <p>No templates found. Create your first template to get started.</p>
+            ) : (
+              <div className="space-y-4">
+                {hasDuplicateTemplates(templates) && (
+                  <Card className="bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">
+                    <CardContent className="p-4 flex items-center space-x-3">
+                      <AlertTriangle className="h-5 w-5 text-amber-500" />
+                      <p className="text-sm text-amber-700 dark:text-amber-400">
+                        Duplicate templates detected. Use the "Fix Templates" tool to resolve issues.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+                {filteredTemplates.map((template) => (
+                  <Card key={template.id} className={!template.isActive ? 'opacity-70' : ''}>
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-lg">{template.name}</CardTitle>
+                          <CardDescription className="mt-1">{template.description}</CardDescription>
+                        </div>
+                        <div className="flex space-x-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditTemplate(template)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteTemplate(template.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-muted p-3 rounded-md max-h-[200px] overflow-y-auto whitespace-pre-wrap text-sm">
+                        {renderTemplatePreview(template.content)}
+                      </div>
+                      {template.requiresAdditionalInfo && (
+                        <div className="mt-3 text-sm">
+                          <p className="text-muted-foreground">Requires additional info: {template.additionalInfoLabel}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
           
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Create Template
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {isLoading ? (
-            <p>Loading templates...</p>
-          ) : filteredTemplates.length === 0 ? (
-            <p>No templates found. Create your first template to get started.</p>
-          ) : (
-            filteredTemplates.map((template) => (
-              <Card key={template.id} className={!template.isActive ? 'opacity-70' : ''}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      <CardDescription className="mt-1">{template.description}</CardDescription>
-                    </div>
-                    <div className="flex space-x-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEditTemplate(template)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteTemplate(template.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-muted p-3 rounded-md max-h-[200px] overflow-y-auto whitespace-pre-wrap text-sm">
-                    {renderTemplatePreview(template.content)}
-                  </div>
-                  {template.requiresAdditionalInfo && (
-                    <div className="mt-3 text-sm">
-                      <p className="text-muted-foreground">Requires additional info: {template.additionalInfoLabel}</p>
-                    </div>
-                  )}
-                </CardContent>
-                <CardFooter className="pt-1">
-                  <div className="flex items-center text-xs text-muted-foreground">
-                    <div className="flex items-center">
-                      {template.isActive ? (
-                        <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
-                      ) : (
-                        <X className="h-3 w-3 mr-1 text-gray-400" />
-                      )}
-                      {template.isActive ? 'Active' : 'Inactive'}
-                    </div>
-                  </div>
-                </CardFooter>
-              </Card>
-            ))
-          )}
+          <div>
+            <FixWhatsAppTemplates onTemplatesFixed={fetchTemplates} />
+          </div>
         </div>
 
         {/* Edit Template Dialog */}
@@ -571,4 +578,11 @@ export default function WhatsAppTemplatesPage() {
       </div>
     </AdminLayout>
   );
+}
+
+// Helper function to check for duplicate templates
+function hasDuplicateTemplates(templates: Template[]): boolean {
+  const templateNames = templates.map(t => t.name);
+  const uniqueNames = new Set(templateNames);
+  return templateNames.length !== uniqueNames.size;
 }
