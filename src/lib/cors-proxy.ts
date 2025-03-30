@@ -3,7 +3,6 @@
  * This creates properly formatted URLs that can work around CORS issues in production
  */
 import { SERVER_ENV } from './env';
-import axios from 'axios';
 
 /**
  * Determines if the application is running in production
@@ -62,33 +61,4 @@ export function createCorsProxyUrl(baseUrl: string, endpoint: string): string {
   
   // Fallback to direct URL if no proxy match is found
   return `${cleanBaseUrl}${cleanEndpoint}`;
-}
-
-/**
- * Makes a direct API call with proper CORS handling for internal status checks
- * This is specifically for status checks and API health monitoring
- * 
- * @param url The full URL to call directly
- * @returns Promise with the response data
- */
-export async function makeDirectApiCall<T>(url: string): Promise<T> {
-  try {
-    // For direct API calls, we need to bypass CORS
-    // In a production environment, we can use the server proxy
-    if (isProduction()) {
-      // In production, use the server proxy with a direct path
-      // This assumes your server is properly proxying requests
-      const proxyUrl = `/direct-api?url=${encodeURIComponent(url)}`;
-      const response = await axios.get<T>(proxyUrl);
-      return response.data;
-    } else {
-      // In development, just make the direct call
-      // This may fail due to CORS, but it's just for development
-      const response = await axios.get<T>(url);
-      return response.data;
-    }
-  } catch (error) {
-    console.error(`Error making direct API call to ${url}:`, error);
-    throw error;
-  }
 } 

@@ -18,17 +18,7 @@ const createProxyConfig = (isProduction: boolean) => ({
     target: isProduction ? DEFAULT_EMAIL_API_URL : 'http://localhost:3000/email-api',
     changeOrigin: true,
     rewrite: (path: string) => path.replace(/^\/email-api/, ''),
-    secure: false,
-    configure: (proxy: any, options: any) => {
-      proxy.on('proxyReq', (proxyReq: any, req: any, res: any) => {
-        proxyReq.setHeader('Origin', isProduction ? DEFAULT_EMAIL_API_URL : 'http://localhost:3000/email-api');
-      });
-      proxy.on('proxyRes', (proxyRes: any, req: any, res: any) => {
-        proxyRes.headers['Access-Control-Allow-Origin'] = '*';
-        proxyRes.headers['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE';
-        proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
-      });
-    },
+    secure: isProduction,
   },
   '^/whatsapp-api/(.*)': {
     target: isProduction ? DEFAULT_WHATSAPP_API_URL : 'http://localhost:3000/whatsapp-api',

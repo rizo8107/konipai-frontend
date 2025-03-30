@@ -4,7 +4,6 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import axios from 'axios';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -31,15 +30,7 @@ const emailApiProxy = createProxyMiddleware({
   target: DEFAULT_EMAIL_API_URL,
   changeOrigin: true,
   pathRewrite: { '^/email-api': '' },
-  secure: false,
-  onProxyReq: (proxyReq, req, res) => {
-    proxyReq.setHeader('Origin', DEFAULT_EMAIL_API_URL);
-  },
-  onProxyRes: (proxyRes, req, res) => {
-    proxyRes.headers['Access-Control-Allow-Origin'] = '*';
-    proxyRes.headers['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE';
-    proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
-  },
+  secure: true,
 });
 
 const whatsappApiProxy = createProxyMiddleware({
@@ -61,36 +52,6 @@ const whatsappApiProxy = createProxyMiddleware({
 app.use('/api', apiProxy);
 app.use('/email-api', emailApiProxy);
 app.use('/whatsapp-api', whatsappApiProxy);
-
-// Add a direct API proxy endpoint to handle urls passed as query parameters
-app.get('/direct-api', async (req, res) => {
-  const targetUrl = req.query.url;
-  
-  if (!targetUrl) {
-    return res.status(400).send({ error: 'Missing url parameter' });
-  }
-  
-  try {
-    console.log(`Proxying direct request to: ${targetUrl}`);
-    const response = await axios.get(targetUrl, {
-      timeout: 10000,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    // Return the response data
-    return res.status(200).json(response.data);
-  } catch (error) {
-    console.error(`Error proxying to ${targetUrl}:`, error.message);
-    return res.status(500).json({ 
-      error: 'Failed to proxy request',
-      message: error.message,
-      url: targetUrl
-    });
-  }
-});
 
 // CORS middleware to ensure all routes have proper headers
 app.use((req, res, next) => {

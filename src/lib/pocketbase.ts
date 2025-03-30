@@ -1,4 +1,133 @@
 import PocketBase from 'pocketbase';
+import { frontendConfig } from '../frontend.config';
+
+/**
+ * PocketBase service for interacting with the PocketBase backend
+ */
+export class PocketBaseService {
+  private pb: PocketBase;
+  
+  constructor() {
+    // Initialize PocketBase with the configured URL
+    this.pb = new PocketBase(frontendConfig.pocketbase.url);
+    
+    // Load auth data from storage if available
+    const authData = localStorage.getItem('pocketbase_auth');
+    if (authData) {
+      try {
+        this.pb.authStore.save(JSON.parse(authData));
+      } catch (error) {
+        console.error('Failed to load auth data from storage:', error);
+        localStorage.removeItem('pocketbase_auth');
+      }
+    }
+    
+    // Save auth data to storage when it changes
+    this.pb.authStore.onChange(() => {
+      if (this.pb.authStore.isValid) {
+        localStorage.setItem('pocketbase_auth', JSON.stringify(this.pb.authStore.exportToCookie()));
+      } else {
+        localStorage.removeItem('pocketbase_auth');
+      }
+    });
+  }
+  
+  /**
+   * Get the PocketBase instance
+   */
+  getPocketBase(): PocketBase {
+    return this.pb;
+  }
+  
+  /**
+   * Check if the user is authenticated
+   */
+  isAuthenticated(): boolean {
+    return this.pb.authStore.isValid;
+  }
+  
+  /**
+   * Get the current user ID
+   */
+  getCurrentUserId(): string | null {
+    return this.pb.authStore.model?.id || null;
+  }
+  
+  /**
+   * Get the current user model
+   */
+  getCurrentUser(): any {
+    return this.pb.authStore.model;
+  }
+  
+  /**
+   * Get a list of records from a collection
+   * @param collection The collection name
+   * @param page The page number
+   * @param perPage Number of items per page
+   * @param filter Filter string
+   * @param sort Sort string
+   */
+  async getList(collection: string, page = 1, perPage = 50, filter = '', sort = ''): Promise<any> {
+    return await this.pb.collection(collection).getList(page, perPage, {
+      filter,
+      sort,
+    });
+  }
+  
+  /**
+   * Get a record by ID
+   * @param collection The collection name
+   * @param id The record ID
+   */
+  async getOne(collection: string, id: string): Promise<any> {
+    return await this.pb.collection(collection).getOne(id);
+  }
+  
+  /**
+   * Create a new record
+   * @param collection The collection name
+   * @param data The record data
+   */
+  async create(collection: string, data: any): Promise<any> {
+    return await this.pb.collection(collection).create(data);
+  }
+  
+  /**
+   * Update a record
+   * @param collection The collection name
+   * @param id The record ID
+   * @param data The updated data
+   */
+  async update(collection: string, id: string, data: any): Promise<any> {
+    return await this.pb.collection(collection).update(id, data);
+  }
+  
+  /**
+   * Delete a record
+   * @param collection The collection name
+   * @param id The record ID
+   */
+  async delete(collection: string, id: string): Promise<boolean> {
+    return await this.pb.collection(collection).delete(id);
+  }
+  
+  /**
+   * Get the file URL for a record
+   * @param record The record object
+   * @param filename The filename field
+   */
+  getFileUrl(record: any, filename: string): string {
+    return this.pb.files.getUrl(record, filename);
+  }
+  
+  /**
+   * Get the auth token
+   */
+  getAuthToken(): string {
+    return this.pb.authStore.token;
+  }
+}
 
 // Initialize PocketBase with the URL from environment variables
 export const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);

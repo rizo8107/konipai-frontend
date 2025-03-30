@@ -6,17 +6,22 @@ import {
   sendWhatsAppTemplate as sendWhatsAppTemplateDirect 
 } from './whatsapp-client';
 import { createCorsProxyUrl, isProduction } from './cors-proxy';
-import { getApiUrl } from './fallback-env';
-
-// Default WhatsApp API URL (will be overridden by fallback server if available)
-const DEFAULT_WHATSAPP_API_URL = 'https://backend-whatsappapi.7za6uc.easypanel.host';
 
 /**
  * Gets the WhatsApp API URL from environment or direct API URL
  * @returns The URL to use for WhatsApp API calls
  */
 export function getWhatsAppApiUrl(): string {
-  return getApiUrl('whatsapp', DEFAULT_WHATSAPP_API_URL);
+  // Get the API URL from the environment variables
+  const envUrl = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_WHATSAPP_API_URL;
+  
+  // Default WhatsApp API URL if environment variable is not set
+  const defaultApiUrl = 'https://backend-whatsappapi.7za6uc.easypanel.host';
+  
+  const baseUrl = envUrl || defaultApiUrl;
+  
+  // Always return the base URL as we'll use createCorsProxyUrl when making requests
+  return baseUrl;
 }
 
 /**

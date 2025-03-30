@@ -1,28 +1,8 @@
 import axios, { AxiosResponse } from 'axios';
 import { Order, OrderItem, Product, User } from '@/types/schema';
-import { createCorsProxyUrl, isProduction } from './cors-proxy';
-import { getApiUrl, fetchFallbackEnvironment } from './fallback-env';
 
-// Default Email API URL (will be overridden by fallback server if available)
-const DEFAULT_EMAIL_API_URL = 'https://backend-server.7za6uc.easypanel.host/email-api';
-
-/**
- * Gets the Email API URL from the fallback environment or falls back to default
- * @returns The Email API URL to use
- */
-export function getEmailApiUrl(): string {
-  return getApiUrl('email', DEFAULT_EMAIL_API_URL);
-}
-
-/**
- * Gets the Email API endpoint URL with CORS handling
- * @param endpoint The API endpoint (e.g., /status)
- * @returns The full URL with CORS handling
- */
-export function getEmailApiEndpoint(endpoint: string): string {
-  const apiUrl = getEmailApiUrl();
-  return createCorsProxyUrl(apiUrl, endpoint);
-}
+// Email API URL using the proxy configured in vite.config.js
+const EMAIL_API_URL = '/email-api';
 
 // Interface for Email message activity logging
 export interface EmailActivity {
@@ -100,12 +80,9 @@ export async function sendEmailMessage(
       data.variables = variables;
     }
     
-    // Get the CORS-friendly URL for the endpoint
-    const endpoint = getEmailApiEndpoint('/send-email');
-    
-    // Make the API request through the proxy
-    console.log('Sending email to:', to, 'via:', endpoint);
-    const response = await axios.post(endpoint, data);
+    // Make the API request through the proxy configured in vite.config.js
+    console.log('Sending email to:', to);
+    const response = await axios.post(`${EMAIL_API_URL}/send-email`, data);
     console.log('Email API response:', response.data);
     
     // Return a standardized response
@@ -176,12 +153,9 @@ export async function sendEmailWithAttachment(
       data.variables = variables;
     }
     
-    // Get the CORS-friendly URL for the endpoint
-    const endpoint = getEmailApiEndpoint('/send-email-with-attachment');
-    
-    // Make the API request through the proxy
-    console.log('Sending email with attachment to:', to, 'via:', endpoint);
-    const response = await axios.post(endpoint, data);
+    // Make the API request through the proxy configured in vite.config.js
+    console.log('Sending email with attachment to:', to);
+    const response = await axios.post(`${EMAIL_API_URL}/send-email-with-attachment`, data);
     console.log('Email API response:', response.data);
     
     // Return a standardized response
@@ -567,7 +541,7 @@ export async function sendReorderReminderEmail(
  */
 export async function logEmailActivity(activity: EmailActivity): Promise<void> {
   try {
-    await axios.post(getEmailApiEndpoint('/log-activity'), activity);
+    await axios.post(`${EMAIL_API_URL}/log-activity`, activity);
     console.log('Email activity logged:', activity);
   } catch (error) {
     console.error('Error logging email activity:', error);
@@ -593,57 +567,14 @@ export async function checkEmailConnection(): Promise<{
   message?: string;
 }> {
   try {
-    // First try a direct connection to the email-api endpoint
-    try {
-      const response = await axios.get('https://crm-server.7za6uc.easypanel.host/email-api/status');
-      console.log('Email API status from direct crm-server endpoint:', response.data);
-      
-      return {
-        connected: true,
-        status: 'connected',
-        message: 'Email API is connected directly'
-      };
-    } catch (directError) {
-      console.warn('Failed to check email directly from crm-server, trying fallback', directError);
-    }
-    
-    // Try using the fallback server to get the URL
-    try {
-      const fallbackResponse = await axios.get('https://crm-server.7za6uc.easypanel.host/');
-      if (fallbackResponse.data && fallbackResponse.data.emailApiUrl) {
-        console.log('Using emailApiUrl directly from fallback server:', fallbackResponse.data.emailApiUrl);
-        
-        // Try to connect to the email API status endpoint
-        const statusEndpoint = fallbackResponse.data.emailApiUrl + '/connection-status';
-        console.log('Checking email API status at:', statusEndpoint);
-        
-        const emailResponse = await axios.get(statusEndpoint, {
-          timeout: 8000,
-        });
-        
-        return {
-          connected: true,
-          status: emailResponse.data?.status || 'connected',
-          message: emailResponse.data?.message || 'Email API is connected through fallback URL'
-        };
-      }
-    } catch (fallbackError) {
-      console.warn('Failed to check email via fallback server URLs', fallbackError);
-    }
-    
-    // Last resort: use the proxy approach
-    const statusUrl = getEmailApiEndpoint('/status');
-    console.log('Checking email connection via proxy at:', statusUrl);
-    
-    const response = await axios.get(statusUrl);
-    
+    const response = await axios.get(`${EMAIL_API_URL}/status`);
     return {
-      connected: response.data?.connected || false,
-      status: response.data?.status || 'unknown',
-      message: response.data?.message || 'Connection status checked via proxy'
+      connected: response.data.connected || false,
+      status: response.data.status || 'unknown',
+      message: response.data.message || 'Connection status checked'
     };
   } catch (error) {
-    console.error('All email connection check methods failed:', error);
+    console.error('Error checking email connection:', error);
     return {
       connected: false,
       status: 'error',
