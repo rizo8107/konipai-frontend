@@ -32,7 +32,7 @@ import {
   Edit, 
   AlertCircle 
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 
 interface OrdersTableProps {
   orders: Order[];
@@ -77,6 +77,17 @@ const getPaymentStatusBadge = (status: PaymentStatus) => {
       {label}
     </Badge>
   );
+};
+
+// Helper function to safely format dates
+const safeFormatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return isValid(date) ? format(date, 'dd MMM yyyy') : 'Invalid date';
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Unknown date';
+  }
 };
 
 export const OrdersTable: React.FC<OrdersTableProps> = ({ 
@@ -180,7 +191,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                     ₹{order.total.toFixed(2)}
                   </TableCell>
                   <TableCell className="text-sm text-gray-500">
-                    {format(new Date(order.created), 'dd MMM yyyy')}
+                    {safeFormatDate(order.created)}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
