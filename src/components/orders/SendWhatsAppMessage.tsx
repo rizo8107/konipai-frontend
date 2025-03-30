@@ -33,7 +33,7 @@ import {
   sendCustomWhatsAppMessage,
   sendWhatsAppTemplate
 } from '@/lib/whatsapp';
-import { sendWhatsAppTemplateFetch, sendWhatsAppMessageFetch } from '@/lib/whatsapp-client';
+import whatsappClient, { sendWhatsAppTemplateFetch } from '@/lib/whatsapp-client';
 import { MessageSquare, Send, AlertCircle, Eye, Smartphone, Info, Wifi, WifiOff, Image, FileVideo, FileText, Upload } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
@@ -625,7 +625,7 @@ export function SendWhatsAppMessage({ order, onMessageSent }: SendWhatsAppMessag
         }
       } else {
         // For custom messages, use the direct message API instead of template API
-        response = await sendWhatsAppMessageFetch(customerPhone, customMessage);
+        response = await whatsappClient.sendWhatsAppMessageFetch(customerPhone, customMessage);
       }
 
       if (response && response.success) {
